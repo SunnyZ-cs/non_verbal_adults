@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Non-Verbal Social Interaction Study</title>
+    <link href="https://unpkg.com/jspsych@7.3.1/css/jspsych.css" rel="stylesheet" type="text/css" />
+    <script src="https://unpkg.com/jspsych@7.3.1"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-preload@1.1.2"></script>
+    <script src="https://proliferate.alps.science/static/js/proliferate.js"></script>
+
+    <script src="js/consent.js"></script>
+    <script src="js/intro.js"></script>
+    <script src="js/demographic_form.js"></script>
+    
+    <style>
+        .jspsych-content { max-width: 900px; }
+        .stim-container { margin-bottom: 20px; }
+        .question-text { font-size: 1.2em; margin-bottom: 20px; font-weight: bold; }
+        .option-button { 
+            padding: 10px 20px; 
+            font-size: 1.1em; 
+            margin: 0 10px; 
+            cursor: pointer;
+            border-radius: 5px;
+            border: 2px solid #333;
+            background-color: #f8f9fa;
+        }
+        .option-button:hover { background-color: #e2e6ea; }
+    </style>
+</head>
+
+<body></body>
+<script>
+    const jsPsych = initJsPsych({
+        show_progress_bar: true,
+        on_finish: function() {
+            const data = jsPsych.data.get();
+            const participant_id = `P_${Math.floor(Math.random()*1000000)}`;
+            const responses = {};
+            
+            data.filter({page_type: 'test_question'}).values().forEach(v => {
+                responses[`${v.test_type}_${v.question_id}`] = v.response_label;
+            });
+
+            const feedback = data.filter({page_type: 'final_feedback'}).values()[0]?.response?.feedback || "";
+            
+            const survey = data.filter({page_type: 'participant_survey'}).values()[0]?.response || {};
+            
+            const final_data = {
+                participant_id: participant_id,
+                responses: responses,
+                feedback: feedback,
+                demographics: survey,
+                condition: jsPsych.data.getURLVariable('condition') || 'pilot1'
+            };
+
+            console.log("Final Data:", final_data);
+            
+            // proliferate.submit(final_data); // Uncomment for actual deployment
+
+            document.body.innerHTML = '<div style="margin: 100px auto; text-align: center;">' +
+                '<h3>Thank you for participating!</h3>' +
+                '<p>Your data has been submitted. You can now close this window.</p>' +
+                '</div>';
+        }
+    });
+
+    const timeline = [];
+
+    // Preload
+    timeline.push({
+        type: jsPsychPreload,
+        auto_preload: true,
+        images: ['images/intro.png', 'stimuli/test/distal_end.png', 'stimuli/test/proximal_end.png'],
+        videos: [] // Using GIFs as images
+    });
+
+    timeline.push(consent);
+    timeline.push(intro);
+
+    // Randomization
+    const fam_idx = Math.floor(Math.random() * 8) + 1;
+    const test_order = Math.random() < 0.5 ? ['distal', 'proximal'] : ['proximal', 'distal'];
+
+    // 1. Familiarization
+    timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<div class="stim-container"><img src="stimuli/fam/Fam_Combo_${fam_idx}.gif" style="width: 100%;"></div>`,
+        choices: "NO_KEYS",
+        trial_duration: 35000, // Approximate duration of 4 trials + transitions
+        prompt: "<p>Please watch the characters carefully.</p>",
+        on_finish: function() {
+            // Wait for GIF to finish. We'll set a fixed duration.
+            // Ideally we'd use a button but user said "auto-proceed".
+        }
+    });
+
+    // 2. Test Trials
+    for (const test_type of test_order) {
+        // Play Test GIF
+        timeline.push({
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `<div class="stim-container"><img src="stimuli/test/${test_type}.gif" style="width: 100%;"></div>`,
+            choices: "NO_KEYS",
+            trial_duration: 12000, // Approximate duration of one test trial sequence
+            prompt: "<p>Watch what happens next.</p>"
+        });
+
+        // Question Set
+        const questions = [
+            { id: 'cause', text: 'Who caused the block to break?' },
+            { id: 'broke', text: 'Who broke the block?' },
+            { id: 'punished', text: 'Who did Star punish?' },
+            { id: 'should_punish', text: 'Who should Star have punished?' },
+            { id: 'fair', text: 'Was the punishment fair?', type: 'yesno' }
+        ];
+
+        for (const q of questions) {
+            timeline.push({
+                type: jsPsychHtmlButtonResponse,
+                stimulus: `
+                    <div class="stim-container"><img src="stimuli/test/${test_type}_end.png" style="width: 100%;"></div>
+                    <div class="question-text">${q.text}</div>
+                `,
+                choices: q.type === 'yesno' ? ['Yes', 'No'] : ['Left character', 'Right character'],
+                data: {
+                    page_type: 'test_question',
+                    test_type: test_type,
+                    question_id: q.id
+                },
+                on_finish: function(data) {
+                    data.response_label = data.response === 0 ? (q.type === 'yesno' ? 'Yes' : 'Left') : (q.type === 'yesno' ? 'No' : 'Right');
+                }
+            });
+        }
+    }
+
+    // 3. Final Feedback
+    timeline.push({
+        type: jsPsychSurveyText,
+        questions: [{ 
+            prompt: "Did anything about the animation seem unclear or confusing?", 
+            name: 'feedback', 
+            rows: 5 
+        }],
+        data: { page_type: 'final_feedback' }
+    });
+
+    // 4. Demographics
+    timeline.push(demographic_form);
+
+    jsPsych.run(timeline);
+</script>
+
+</html>
