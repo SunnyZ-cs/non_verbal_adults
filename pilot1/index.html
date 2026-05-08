@@ -91,12 +91,8 @@
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<div class="stim-container"><img src="stimuli/fam/Fam_Combo_${fam_idx}.gif" style="width: 100%;"></div>`,
         choices: "NO_KEYS",
-        trial_duration: 35000, // Approximate duration of 4 trials + transitions
-        prompt: "<p>Please watch the characters carefully.</p>",
-        on_finish: function() {
-            // Wait for GIF to finish. We'll set a fixed duration.
-            // Ideally we'd use a button but user said "auto-proceed".
-        }
+        trial_duration: 121000, // Corrected duration (~121s)
+        prompt: "<p>Please watch the characters carefully.</p>"
     });
 
     // 2. Test Trials
@@ -106,7 +102,7 @@
             type: jsPsychHtmlKeyboardResponse,
             stimulus: `<div class="stim-container"><img src="stimuli/test/${test_type}.gif" style="width: 100%;"></div>`,
             choices: "NO_KEYS",
-            trial_duration: 12000, // Approximate duration of one test trial sequence
+            trial_duration: 19000, // Proceed to questions after animation ends (~19s)
             prompt: "<p>Watch what happens next.</p>"
         });
 
