@@ -110,12 +110,24 @@
     const fam_idx = Math.floor(Math.random() * 8) + 1;
     const test_order = Math.random() < 0.5 ? ['distal', 'proximal'] : ['proximal', 'distal'];
 
+    // Exact durations of each familiarization GIF in milliseconds
+    const fam_durations = {
+        1: 135920,
+        2: 133440,
+        3: 133440,
+        4: 135920,
+        5: 135920,
+        6: 133440,
+        7: 133440,
+        8: 135920
+    };
+
     // 1. Familiarization
     timeline.push({
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<div class="stim-container"><img src="stimuli/fam/Fam_Combo_${fam_idx}.gif" class="stim-layer"></div>`,
         choices: "NO_KEYS",
-        trial_duration: 121000, 
+        trial_duration: fam_durations[fam_idx], 
         prompt: "<p style='color: #666;'>Please watch the characters carefully.</p>",
         data: { page_type: 'familiarization', fam_idx: fam_idx, test_order: test_order }
     });
