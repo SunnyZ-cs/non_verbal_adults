@@ -107,17 +107,22 @@
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<div class="stim-container"><img src="stimuli/fam/Fam_Combo_${fam_idx}.gif"></div>`,
         choices: "NO_KEYS",
-        trial_duration: 121000, // Duration of the full animation part
+        trial_duration: 121000, 
         prompt: "<p style='color: #666;'>Please watch the characters carefully.</p>",
         data: { page_type: 'familiarization', fam_idx: fam_idx, test_order: test_order }
     });
 
+    // Transition between Fam and Test 1
+    timeline.push({
+        type: jsPsychHtmlButtonResponse,
+        stimulus: "<h3>Great! You've finished the first part.</h3><p>Click the button below to continue to the next part.</p>",
+        choices: ['Next'],
+        button_html: '<button class="option-button">%choice%</button>'
+    });
+
     // 2. Test Trials Loop
-    for (const test_type of test_order) {
-        
-        // Play Test Animation and seamlessly transition to questions
-        // We use a single trial to play the animation and show the first question
-        // to avoid any white flash or jump.
+    for (let t_idx = 0; t_idx < test_order.length; t_idx++) {
+        const test_type = test_order[t_idx];
         
         const questions = [
             { id: 'cause', text: 'Who caused the block to break?' },
@@ -134,7 +139,8 @@
                 <div class="stim-container">
                     <img id="test-anim" src="stimuli/test/${test_type}.gif">
                 </div>
-                <div id="question-area" style="visibility: hidden;">
+                <div style="margin-top: 10px; font-weight: bold; color: #333;">now watch what happens</div>
+                <div id="question-area" style="visibility: hidden; margin-top: 20px;">
                     <div class="question-text">${questions[0].text}</div>
                 </div>
             `,
@@ -171,7 +177,10 @@
                 type: jsPsychHtmlButtonResponse,
                 stimulus: `
                     <div class="stim-container"><img src="stimuli/test/${test_type}_end.png"></div>
-                    <div class="question-text">${q.text}</div>
+                    <div style="margin-top: 10px; font-weight: bold; color: #333;">now watch what happens</div>
+                    <div style="margin-top: 20px;">
+                        <div class="question-text">${q.text}</div>
+                    </div>
                 `,
                 choices: q.type === 'yesno' ? ['Yes', 'No'] : ['Left character', 'Right character'],
                 button_html: '<button class="option-button">%choice%</button>',
@@ -183,6 +192,16 @@
                 on_finish: function(data) {
                     data.response_label = data.response === 0 ? (q.type === 'yesno' ? 'Yes' : 'Left') : (q.type === 'yesno' ? 'No' : 'Right');
                 }
+            });
+        }
+
+        // Transition between Test Trial 1 and Test Trial 2 (if there's a next one)
+        if (t_idx < test_order.length - 1) {
+            timeline.push({
+                type: jsPsychHtmlButtonResponse,
+                stimulus: "<h3>Ready for the next video?</h3><p>Click the button below when you are ready to continue.</p>",
+                choices: ['Next'],
+                button_html: '<button class="option-button">%choice%</button>'
             });
         }
     }
