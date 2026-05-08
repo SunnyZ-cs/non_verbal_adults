@@ -28,7 +28,14 @@
             position: relative;
             overflow: hidden;
         }
-        .stim-container img { width: 100%; height: 100%; object-fit: contain; }
+        .stim-layer { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            object-fit: contain;
+        }
         .question-text { font-size: 1.4em; margin-bottom: 25px; font-weight: bold; color: #333; }
         .option-button { 
             padding: 12px 24px; 
@@ -41,7 +48,7 @@
             transition: background-color 0.2s;
         }
         .option-button:hover { background-color: #e2e6ea; }
-        #fixed-stim { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #instruction-line { margin-top: 10px; font-weight: bold; color: #333; }
     </style>
 </head>
 
@@ -105,7 +112,7 @@
     // 1. Familiarization
     timeline.push({
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<div class="stim-container"><img src="stimuli/fam/Fam_Combo_${fam_idx}.gif"></div>`,
+        stimulus: `<div class="stim-container"><img src="stimuli/fam/Fam_Combo_${fam_idx}.gif" class="stim-layer"></div>`,
         choices: "NO_KEYS",
         trial_duration: 121000, 
         prompt: "<p style='color: #666;'>Please watch the characters carefully.</p>",
@@ -137,9 +144,10 @@
             type: jsPsychHtmlButtonResponse,
             stimulus: `
                 <div class="stim-container">
-                    <img id="test-anim" src="stimuli/test/${test_type}.gif">
+                    <img id="test-static" src="stimuli/test/${test_type}_end.png" class="stim-layer" style="visibility: hidden;">
+                    <img id="test-anim" src="stimuli/test/${test_type}.gif" class="stim-layer">
                 </div>
-                <div style="margin-top: 10px; font-weight: bold; color: #333;">now watch what happens</div>
+                <div id="instruction-line">now watch what happens</div>
                 <div id="question-area" style="visibility: hidden; margin-top: 20px;">
                     <div class="question-text">${questions[0].text}</div>
                 </div>
@@ -147,18 +155,22 @@
             choices: ['Left character', 'Right character'],
             button_html: '<button class="option-button">%choice%</button>',
             on_load: function() {
-                // Hide buttons initially
                 const btns = document.querySelectorAll('.option-button');
                 btns.forEach(b => b.style.display = 'none');
                 
-                // After 18.8s (animation end), swap GIF for static PNG and show questions
+                // Animation ends at ~18.7s. 
+                // We show the static layer at 18.8s to "freeze" the frame perfectly.
                 setTimeout(() => {
-                    const img = document.getElementById('test-anim');
-                    if (img) img.src = `stimuli/test/${test_type}_end.png`;
-                    
+                    document.getElementById('test-static').style.visibility = 'visible';
+                    document.getElementById('test-anim').style.visibility = 'hidden';
+                }, 18800);
+
+                // Wait another 3 seconds of pause before showing the question (total 21.8s)
+                setTimeout(() => {
+                    document.getElementById('instruction-line').style.display = 'none';
                     document.getElementById('question-area').style.visibility = 'visible';
                     btns.forEach(b => b.style.display = 'inline-block');
-                }, 18800);
+                }, 21800);
             },
             data: {
                 page_type: 'test_question',
@@ -170,14 +182,13 @@
             }
         });
 
-        // Remaining Questions (using static end image stimulus)
+        // Remaining Questions
         for (let i = 1; i < questions.length; i++) {
             const q = questions[i];
             timeline.push({
                 type: jsPsychHtmlButtonResponse,
                 stimulus: `
-                    <div class="stim-container"><img src="stimuli/test/${test_type}_end.png"></div>
-                    <div style="margin-top: 10px; font-weight: bold; color: #333;">now watch what happens</div>
+                    <div class="stim-container"><img src="stimuli/test/${test_type}_end.png" class="stim-layer"></div>
                     <div style="margin-top: 20px;">
                         <div class="question-text">${q.text}</div>
                     </div>
@@ -195,7 +206,7 @@
             });
         }
 
-        // Transition between Test Trial 1 and Test Trial 2 (if there's a next one)
+        // Transition between Test Trial 1 and Test Trial 2
         if (t_idx < test_order.length - 1) {
             timeline.push({
                 type: jsPsychHtmlButtonResponse,
