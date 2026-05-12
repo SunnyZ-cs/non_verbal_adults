@@ -149,7 +149,11 @@
             { id: 'broke', text: 'Who broke the block?' },
             { id: 'punished', text: 'Who did Star punish?' },
             { id: 'should_punish', text: 'Who should Star have punished?' },
-            { id: 'fair', text: 'Was the punishment fair?', type: 'yesno' }
+            { id: 'fair', text: 'Was the punishment fair?', type: 'yesno' },
+            { id: 'intend_left', text: 'Did the left character intend to break the block?', type: 'yesno' },
+            { id: 'intend_right', text: 'Did the right character intend to break the block?', choices: ['Yes', 'No', 'Not sure'] },
+            { id: 'which_intended', text: 'Which character, if either, intended to break the block?', choices: ['Left character', 'Right character', 'Both', 'Neither'] },
+            { id: 'deserve_punish', text: 'Did the character who was punished deserve to be punished?', type: 'yesno' }
         ];
 
         // Trial 1: Animation + First Question
@@ -206,7 +210,7 @@
                         <div class="question-text">${q.text}</div>
                     </div>
                 `,
-                choices: q.type === 'yesno' ? ['Yes', 'No'] : ['Left character', 'Right character'],
+                choices: q.choices ? q.choices : (q.type === 'yesno' ? ['Yes', 'No'] : ['Left character', 'Right character']),
                 button_html: '<button class="option-button">%choice%</button>',
                 data: {
                     page_type: 'test_question',
@@ -214,7 +218,11 @@
                     question_id: q.id
                 },
                 on_finish: function(data) {
-                    data.response_label = data.response === 0 ? (q.type === 'yesno' ? 'Yes' : 'Left') : (q.type === 'yesno' ? 'No' : 'Right');
+                    if (q.choices) {
+                        data.response_label = q.choices[data.response];
+                    } else {
+                        data.response_label = data.response === 0 ? (q.type === 'yesno' ? 'Yes' : 'Left') : (q.type === 'yesno' ? 'No' : 'Right');
+                    }
                 }
             });
         }
