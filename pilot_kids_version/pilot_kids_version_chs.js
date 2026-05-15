@@ -45,6 +45,26 @@ _style.textContent = `
     }
     .instructions-box h2 { margin-bottom: 10px; }
     .instructions-box ul  { padding-left: 1.4em; }
+
+    /* Pulsing Bullseye */
+    @keyframes pulse-bullseye {
+        0% { transform: scale(0.8); opacity: 0.8; }
+        50% { transform: scale(1.2); opacity: 1; }
+        100% { transform: scale(0.8); opacity: 0.8; }
+    }
+    .bullseye-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 70vh;
+    }
+    .bullseye {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #e74c3c 20%, #ecf0f1 20%, #ecf0f1 40%, #e74c3c 40%, #e74c3c 60%, #ecf0f1 60%, #ecf0f1 80%, #e74c3c 80%);
+        animation: pulse-bullseye 1s infinite ease-in-out;
+    }
 `;
 document.head.appendChild(_style);
 
@@ -149,6 +169,15 @@ function buildTestTimeline(testObj) {
     // Placing it here ensures the spinner happens BEFORE the animation,
     // so the transition from animation to freeze is perfectly seamless!
     trials.push(start_recording);
+
+    // 0.5. Pulsing Bullseye to refixate gaze (1 second)
+    trials.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<div class="bullseye-container"><div class="bullseye"></div></div>`,
+        choices: "NO_KEYS",
+        trial_duration: 1000,
+        data: { trial_type: testObj.name + '_bullseye' }
+    });
 
     // 1. Play the animation AND the freeze in a single trial to completely eliminate screen flashing.
     trials.push({

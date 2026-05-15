@@ -39,7 +39,7 @@ def run_icatcher(video_path, output_dir="icatcher_output"):
         print(f"Could not find expected output file: {expected_output_txt}")
         return None
 
-def analyze_gaze(icatcher_output_file, freeze_duration=20.0, anim_duration=18.76):
+def analyze_gaze(icatcher_output_file, freeze_duration=20.0, anim_duration=18.76, bullseye_duration=1.0):
     """
     Parses the iCatcher output to compute the total right-looking 
     and left-looking frames for ONLY the final freeze frame portion.
@@ -60,10 +60,10 @@ def analyze_gaze(icatcher_output_file, freeze_duration=20.0, anim_duration=18.76
         print(f"Could not find a prediction column in {icatcher_output_file}. Columns found: {df.columns}")
         return 0, 0, 0
 
-    # Calculate how many frames represent the last 10 seconds.
-    # The total video is anim_duration + freeze_duration (18.76 + 10 = 28.76 sec).
+    # Calculate how many frames represent the last 20 seconds.
+    # The total video is bullseye_duration + anim_duration + freeze_duration (1 + 18.76 + 20 = 39.76 sec).
     # We only want the frames from the freeze_duration part.
-    total_duration = anim_duration + freeze_duration
+    total_duration = bullseye_duration + anim_duration + freeze_duration
     fraction_to_keep = freeze_duration / total_duration
     
     total_frames = len(df)
