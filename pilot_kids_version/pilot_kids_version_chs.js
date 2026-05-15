@@ -60,12 +60,14 @@ const BASE = 'https://raw.githubusercontent.com/SunnyZ-cs/non_verbal_adults/main
 
 const fam_combo_index = Math.floor(Math.random() * 8) + 1; // Random 1-8
 const fam_combo_url = BASE + `Fam_Combo_${fam_combo_index}.gif`;
+const fam_freeze_url = BASE + `Fam_Combo_${fam_combo_index}_freeze.png`;
 
 const fam_durations = {
     1: 120960, 2: 118480, 3: 118480, 4: 120960,
     5: 120960, 6: 118480, 7: 118480, 8: 120960
 };
 const fam_duration = fam_durations[fam_combo_index];
+const fam_freeze_duration = 4000; // 4 seconds freeze for fam trials
 
 // Test Trials Details
 const distal_anim = BASE + 'distal_test_final.gif';
@@ -131,12 +133,21 @@ const stop_recording  = { type: chsRecord.StopRecordPlugin  };
 //  TRIAL BUILDERS
 // ════════════════════════════════════════════════════════════════════
 
-// Familiarization Animation (Play GIF once). Wait time based on precise GIF length.
+// Familiarization Animation (Play GIF once then freeze). 
 const fam_trial = {
     type: jsPsychHtmlKeyboardResponse,
-    stimulus: `<img src="${fam_combo_url}" class="trial-visual">`,
+    stimulus: `<img id="fam-visual" src="${fam_combo_url}" class="trial-visual">`,
     choices: "NO_KEYS",
-    trial_duration: fam_duration,
+    trial_duration: fam_duration + fam_freeze_duration,
+    on_load: function() {
+        const img = new Image();
+        img.src = fam_freeze_url;
+        
+        setTimeout(function() {
+            const el = document.getElementById('fam-visual');
+            if (el) el.src = fam_freeze_url;
+        }, fam_duration);
+    },
     data: { trial_type: 'familiarization', combo_used: fam_combo_index }
 };
 
@@ -168,16 +179,16 @@ function buildTestTimeline(testObj) {
                 }
               </style>
               <g class="bullseye-group">
-                <circle cx="100" cy="100" r="90" fill="#e74c3c"/>
-                <circle cx="100" cy="100" r="70" fill="#ecf0f1"/>
-                <circle cx="100" cy="100" r="50" fill="#e74c3c"/>
-                <circle cx="100" cy="100" r="30" fill="#ecf0f1"/>
-                <circle cx="100" cy="100" r="10" fill="#e74c3c"/>
+                <circle cx="100" cy="100" r="90" fill="#000000"/>
+                <circle cx="100" cy="100" r="70" fill="#ffffff"/>
+                <circle cx="100" cy="100" r="50" fill="#000000"/>
+                <circle cx="100" cy="100" r="30" fill="#ffffff"/>
+                <circle cx="100" cy="100" r="10" fill="#000000"/>
               </g>
             </svg>
         </div>`,
         choices: "NO_KEYS",
-        trial_duration: 1000,
+        trial_duration: 3000,
         data: { trial_type: testObj.name + '_bullseye' }
     });
 
