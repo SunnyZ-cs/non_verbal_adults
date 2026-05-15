@@ -61,12 +61,20 @@ const BASE = 'https://raw.githubusercontent.com/SunnyZ-cs/non_verbal_adults/main
 const fam_combo_index = Math.floor(Math.random() * 8) + 1; // Random 1-8
 const fam_combo_url = BASE + `Fam_Combo_${fam_combo_index}.gif`;
 
+const fam_durations = {
+    1: 120960, 2: 118480, 3: 118480, 4: 120960,
+    5: 120960, 6: 118480, 7: 118480, 8: 120960
+};
+const fam_duration = fam_durations[fam_combo_index];
+
 // Test Trials Details
 const distal_anim = BASE + 'distal_test_final.gif';
 const distal_freeze = BASE + 'distal_test_final_freeze.png';
 
 const proximal_anim = BASE + 'proximal_test_final.gif';
 const proximal_freeze = BASE + 'proximal_test_final_freeze.png';
+
+const test_anim_duration = 18760;
 
 // Randomize Test Order
 const test_order = Math.random() < 0.5 ? 
@@ -122,13 +130,12 @@ const stop_recording  = { type: chsRecord.StopRecordPlugin  };
 //  TRIAL BUILDERS
 // ════════════════════════════════════════════════════════════════════
 
-// Familiarization Animation (Play GIF once). Wait time based on GIF length if possible,
-// but since we can't perfectly query GIF length easily, we can use a generous timeout or continue button.
-// For smooth flow, we can use a continue button here so experimenter/parent controls pacing.
+// Familiarization Animation (Play GIF once). Wait time based on precise GIF length.
 const fam_trial = {
-    type: jsPsychHtmlButtonResponse,
+    type: jsPsychHtmlKeyboardResponse,
     stimulus: `<img src="${fam_combo_url}" class="trial-visual">`,
-    choices: ['Continue to Next Phase'],
+    choices: "NO_KEYS",
+    trial_duration: fam_duration,
     data: { trial_type: 'familiarization', combo_used: fam_combo_index }
 };
 
@@ -137,11 +144,12 @@ function buildTestTimeline(testObj) {
     const trials = [];
     
     // 1. Play the animation part of the test (GIF).
-    // The user clicks continue when the animation finishes to trigger the freeze frame recording.
+    // The trial naturally ends exactly when the GIF completes.
     trials.push({
-        type: jsPsychHtmlButtonResponse,
+        type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="${testObj.anim}" class="trial-visual">`,
-        choices: ['Begin Recording (Click when action completes)'],
+        choices: "NO_KEYS",
+        trial_duration: test_anim_duration,
         data: { trial_type: testObj.name + '_animation' }
     });
     
