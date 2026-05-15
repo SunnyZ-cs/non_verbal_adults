@@ -52,7 +52,7 @@ document.head.appendChild(_style);
 //  CONFIG
 // ════════════════════════════════════════════════════════════════════
 
-const BASE = 'https://raw.githubusercontent.com/davdrose/cause_fault_punish/main/code/experiments/non_verbal_experiment_animation_materials/';
+const BASE = 'https://raw.githubusercontent.com/SunnyZ-cs/non_verbal_adults/main/pilot_kids_version/materials/';
 
 // ════════════════════════════════════════════════════════════════════
 //  SCENARIOS & RANDOMIZATION
