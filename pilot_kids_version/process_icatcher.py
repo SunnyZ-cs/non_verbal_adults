@@ -39,35 +39,40 @@ def run_icatcher(video_path, output_dir="icatcher_output"):
         print(f"Could not find expected output file: {expected_output_txt}")
         return None
 
-def analyze_gaze(icatcher_output_file):
+def analyze_gaze(icatcher_output_file, freeze_duration=10.0, anim_duration=18.76):
     """
     Parses the iCatcher output to compute the total right-looking 
-    and left-looking frames.
+    and left-looking frames for ONLY the final freeze frame portion.
     """
     if not icatcher_output_file:
-        return 0, 0
+        return 0, 0, 0
         
-    # Read the space-separated or comma-separated iCatcher output
-    # iCatcher output typically has columns: frame, prediction, confidence, etc.
-    # We will try comma first, then whitespace
     try:
         df = pd.read_csv(icatcher_output_file)
         if 'prediction' not in df.columns and 'label' not in df.columns:
-            # Fallback to whitespace separation
             df = pd.read_csv(icatcher_output_file, delim_whitespace=True)
     except Exception as e:
         print(f"Failed to read {icatcher_output_file}: {e}")
-        return 0, 0
+        return 0, 0, 0
 
-    # Determine which column holds the gaze prediction ('prediction' or 'label')
     pred_col = 'prediction' if 'prediction' in df.columns else 'label' if 'label' in df.columns else None
-    
     if not pred_col:
         print(f"Could not find a prediction column in {icatcher_output_file}. Columns found: {df.columns}")
-        return 0, 0
+        return 0, 0, 0
 
-    # iCatcher predictions are typically strings: "left", "right", "away"
-    # Convert to lowercase to be safe
+    # Calculate how many frames represent the last 10 seconds.
+    # The total video is anim_duration + freeze_duration (18.76 + 10 = 28.76 sec).
+    # We only want the frames from the freeze_duration part.
+    total_duration = anim_duration + freeze_duration
+    fraction_to_keep = freeze_duration / total_duration
+    
+    total_frames = len(df)
+    frames_to_keep = int(total_frames * fraction_to_keep)
+    
+    # Slice the dataframe to only include the last 'frames_to_keep'
+    if frames_to_keep > 0:
+        df = df.tail(frames_to_keep).copy()
+    
     df[pred_col] = df[pred_col].astype(str).str.lower()
     
     left_frames = (df[pred_col] == 'left').sum()

@@ -143,6 +143,12 @@ const fam_trial = {
 function buildTestTimeline(testObj) {
     const trials = [];
     
+    // 0. Start webcam recording FIRST. 
+    // This plugin takes ~1 second to initialize and shows a blue spinner. 
+    // Placing it here ensures the spinner happens BEFORE the animation,
+    // so the transition from animation to freeze is perfectly seamless!
+    trials.push(start_recording);
+
     // 1. Play the animation part of the test (GIF).
     // The trial naturally ends exactly when the GIF completes.
     trials.push({
@@ -153,10 +159,7 @@ function buildTestTimeline(testObj) {
         data: { trial_type: testObj.name + '_animation' }
     });
     
-    // 2. Start webcam recording
-    trials.push(start_recording);
-    
-    // 3. Display the final freeze frame for exactly 10 seconds.
+    // 2. Display the final freeze frame for exactly 10 seconds.
     trials.push({
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="${testObj.freeze}" class="trial-visual">`,
