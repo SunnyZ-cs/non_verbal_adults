@@ -39,7 +39,7 @@ def run_icatcher(video_path, output_dir="icatcher_output"):
         print(f"Could not find expected output file: {expected_output_txt}")
         return None
 
-def analyze_gaze(icatcher_output_file, freeze_duration=10.0, anim_duration=18.76):
+def analyze_gaze(icatcher_output_file, freeze_duration=20.0, anim_duration=18.76):
     """
     Parses the iCatcher output to compute the total right-looking 
     and left-looking frames for ONLY the final freeze frame portion.

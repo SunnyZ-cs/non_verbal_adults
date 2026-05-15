@@ -75,6 +75,7 @@ const proximal_anim = BASE + 'proximal_test_final.gif';
 const proximal_freeze = BASE + 'proximal_test_final_freeze.png';
 
 const test_anim_duration = 18760;
+const freeze_duration = 20000; // 20 seconds
 
 // Randomize Test Order
 const test_order = Math.random() < 0.5 ? 
@@ -149,26 +150,27 @@ function buildTestTimeline(testObj) {
     // so the transition from animation to freeze is perfectly seamless!
     trials.push(start_recording);
 
-    // 1. Play the animation part of the test (GIF).
-    // The trial naturally ends exactly when the GIF completes.
+    // 1. Play the animation AND the freeze in a single trial to completely eliminate screen flashing.
     trials.push({
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="${testObj.anim}" class="trial-visual">`,
+        stimulus: `<img id="test-visual" src="${testObj.anim}" class="trial-visual">`,
         choices: "NO_KEYS",
-        trial_duration: test_anim_duration,
-        data: { trial_type: testObj.name + '_animation' }
+        trial_duration: test_anim_duration + freeze_duration,
+        on_load: function() {
+            // Preload the freeze image immediately to ensure zero delay
+            const img = new Image();
+            img.src = testObj.freeze;
+            
+            // Swap the GIF to the static PNG exactly when the animation finishes its loop
+            setTimeout(function() {
+                const el = document.getElementById('test-visual');
+                if (el) el.src = testObj.freeze;
+            }, test_anim_duration);
+        },
+        data: { trial_type: testObj.name + '_full_test' }
     });
     
-    // 2. Display the final freeze frame for exactly 10 seconds.
-    trials.push({
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="${testObj.freeze}" class="trial-visual">`,
-        choices: "NO_KEYS",
-        trial_duration: 10000,
-        data: { trial_type: testObj.name + '_freeze_10s' }
-    });
-    
-    // 4. Stop webcam recording
+    // 2. Stop webcam recording
     trials.push(stop_recording);
 
     return trials;
