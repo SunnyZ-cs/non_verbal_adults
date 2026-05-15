@@ -45,26 +45,6 @@ _style.textContent = `
     }
     .instructions-box h2 { margin-bottom: 10px; }
     .instructions-box ul  { padding-left: 1.4em; }
-
-    /* Pulsing Bullseye */
-    @keyframes pulse-bullseye {
-        0% { transform: scale(0.8); opacity: 0.8; }
-        50% { transform: scale(1.2); opacity: 1; }
-        100% { transform: scale(0.8); opacity: 0.8; }
-    }
-    .bullseye-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 70vh;
-    }
-    .bullseye {
-        width: 150px;
-        height: 150px;
-        border-radius: 50%;
-        background: radial-gradient(circle, #e74c3c 20%, #ecf0f1 20%, #ecf0f1 40%, #e74c3c 40%, #e74c3c 60%, #ecf0f1 60%, #ecf0f1 80%, #e74c3c 80%);
-        animation: pulse-bullseye 1s infinite ease-in-out;
-    }
 `;
 document.head.appendChild(_style);
 
@@ -173,7 +153,29 @@ function buildTestTimeline(testObj) {
     // 0.5. Pulsing Bullseye to refixate gaze (1 second)
     trials.push({
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<div class="bullseye-container"><div class="bullseye"></div></div>`,
+        stimulus: `
+        <div style="display:flex; justify-content:center; align-items:center; height:70vh;">
+            <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+              <style>
+                @keyframes pulse-svg {
+                  0% { transform: scale(0.8); opacity: 0.8; }
+                  50% { transform: scale(1.1); opacity: 1; }
+                  100% { transform: scale(0.8); opacity: 0.8; }
+                }
+                .bullseye-group {
+                  animation: pulse-svg 1s infinite ease-in-out;
+                  transform-origin: center;
+                }
+              </style>
+              <g class="bullseye-group">
+                <circle cx="100" cy="100" r="90" fill="#e74c3c"/>
+                <circle cx="100" cy="100" r="70" fill="#ecf0f1"/>
+                <circle cx="100" cy="100" r="50" fill="#e74c3c"/>
+                <circle cx="100" cy="100" r="30" fill="#ecf0f1"/>
+                <circle cx="100" cy="100" r="10" fill="#e74c3c"/>
+              </g>
+            </svg>
+        </div>`,
         choices: "NO_KEYS",
         trial_duration: 1000,
         data: { trial_type: testObj.name + '_bullseye' }
