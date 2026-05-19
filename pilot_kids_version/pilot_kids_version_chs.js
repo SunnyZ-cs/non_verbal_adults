@@ -170,9 +170,20 @@ function buildVideoTrial(filename, trial_name) {
     };
 }
 
-const intro_video = buildVideoTrial('overall_study_intro.mp4', 'overall_study_intro');
+// Helper function to build video trials that require a 'Next' button click
+function buildVideoTrialWithNext(filename, trial_name) {
+    return {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: `<video id="${trial_name}-vid" class="trial-visual" autoplay><source src="${BASE}${filename}" type="video/mp4"></video>`,
+        choices: ['Next'],
+        button_html: '<button class="jspsych-btn" style="position: fixed; bottom: 30px; right: 30px; padding: 15px 30px; font-size: 1.2em;">%choice%</button>',
+        data: { trial_type: trial_name }
+    };
+}
+
+const intro_video = buildVideoTrialWithNext('overall_study_intro.mp4', 'overall_study_intro');
 const warmup_practice = buildVideoTrial('warmup_practice.mp4', 'warmup_practice');
-const warmup_finish = buildVideoTrial('warmup_finish.mp4', 'warmup_finish');
+const warmup_finish = buildVideoTrialWithNext('warmup_finish.mp4', 'warmup_finish');
 const outro_video = buildVideoTrial('overall_study_end.mp4', 'overall_study_end');
 
 // Build Test Timeline for a specific test block
