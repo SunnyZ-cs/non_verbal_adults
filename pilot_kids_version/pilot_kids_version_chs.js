@@ -45,6 +45,20 @@ _style.textContent = `
     }
     .instructions-box h2 { margin-bottom: 10px; }
     .instructions-box ul  { padding-left: 1.4em; }
+
+    /* Continue button: larger, fixed to bottom-right corner */
+    .continue-btn-group {
+        position: fixed !important;
+        bottom: 24px !important;
+        right: 28px !important;
+        margin: 0 !important;
+        justify-content: flex-end !important;
+        z-index: 9999 !important;
+    }
+    .continue-btn-group .jspsych-btn {
+        font-size: 1.3em !important;
+        padding: 14px 44px !important;
+    }
 `;
 document.head.appendChild(_style);
 
@@ -174,19 +188,13 @@ function buildVideoTrial(filename, trial_name) {
 function buildVideoTrialWithNext(filename, trial_name) {
     return {
         type: jsPsychHtmlButtonResponse,
-        stimulus: `<video id="${trial_name}-vid" class="trial-visual" autoplay playsinline><source src="${BASE}${filename}" type="video/mp4"></video>`,
+        stimulus: `<video id="${trial_name}-vid" class="trial-visual" src="${BASE}${filename}" autoplay playsinline></video>`,
         choices: ['Next'],
         on_load: function() {
             const group = document.getElementById('jspsych-html-button-response-btngroup');
-            if (group) {
-                group.style.position = 'absolute';
-                group.style.bottom = '30px';
-                group.style.right = '30px';
-            }
-            const btn = document.querySelector('.jspsych-btn');
+            if (group) group.classList.add('continue-btn-group');
+            const btn = group && group.querySelector('button');
             if (btn) {
-                btn.style.fontSize = '1.2em';
-                btn.style.padding = '15px 30px';
                 // Wait for video to finish before allowing the user to proceed
                 btn.disabled = true;
                 const vid = document.getElementById(`${trial_name}-vid`);
