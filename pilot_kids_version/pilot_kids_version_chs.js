@@ -151,6 +151,30 @@ const fam_trial = {
     data: { trial_type: 'familiarization', combo_used: fam_combo_index }
 };
 
+// Helper function to build video trials that auto-advance
+function buildVideoTrial(filename, trial_name) {
+    return {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<video id="${trial_name}-vid" class="trial-visual" autoplay><source src="${BASE}${filename}" type="video/mp4"></video>`,
+        choices: "NO_KEYS",
+        on_load: function() {
+            const vid = document.getElementById(`${trial_name}-vid`);
+            if (vid) {
+                vid.onended = function() { jsPsych.finishTrial(); };
+                vid.onerror = function() { jsPsych.finishTrial(); };
+            } else { 
+                setTimeout(jsPsych.finishTrial, 5000); 
+            }
+        },
+        data: { trial_type: trial_name }
+    };
+}
+
+const intro_video = buildVideoTrial('overall_study_intro.mp4', 'overall_study_intro');
+const warmup_practice = buildVideoTrial('warmup_practice.mp4', 'warmup_practice');
+const warmup_finish = buildVideoTrial('warmup_finish.mp4', 'warmup_finish');
+const outro_video = buildVideoTrial('overall_study_end.mp4', 'overall_study_end');
+
 // Build Test Timeline for a specific test block
 function buildTestTimeline(testObj) {
     const trials = [];
@@ -229,8 +253,10 @@ jsPsych.run([
     video_consent,
     instructions,
 
-    // ── Intro Recording (Placeholder) ──
-    // To be done later per instructions.
+    // ── Intro Sequence ──
+    intro_video,
+    warmup_practice,
+    warmup_finish,
 
     // ── Record randomizations ──
     {
@@ -254,8 +280,8 @@ jsPsych.run([
     // ── Test Phase 2 ──
     ...buildTestTimeline(test_order[1]),
 
-    // ── Outro Recording (Placeholder) ──
-    // To be done later per instructions.
+    // ── Outro Sequence ──
+    outro_video,
 
     // ── End ──
     { type: jsPsychFullscreen, fullscreen_mode: false, delay_after: 0 },
