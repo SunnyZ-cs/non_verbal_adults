@@ -174,9 +174,28 @@ function buildVideoTrial(filename, trial_name) {
 function buildVideoTrialWithNext(filename, trial_name) {
     return {
         type: jsPsychHtmlButtonResponse,
-        stimulus: `<video id="${trial_name}-vid" class="trial-visual" autoplay><source src="${BASE}${filename}" type="video/mp4"></video>`,
+        stimulus: `<video id="${trial_name}-vid" class="trial-visual" autoplay playsinline><source src="${BASE}${filename}" type="video/mp4"></video>`,
         choices: ['Next'],
-        button_html: '<button class="jspsych-btn" style="position: fixed; bottom: 30px; right: 30px; padding: 15px 30px; font-size: 1.2em;">%choice%</button>',
+        on_load: function() {
+            const group = document.getElementById('jspsych-html-button-response-btngroup');
+            if (group) {
+                group.style.position = 'absolute';
+                group.style.bottom = '30px';
+                group.style.right = '30px';
+            }
+            const btn = document.querySelector('.jspsych-btn');
+            if (btn) {
+                btn.style.fontSize = '1.2em';
+                btn.style.padding = '15px 30px';
+                // Wait for video to finish before allowing the user to proceed
+                btn.disabled = true;
+                const vid = document.getElementById(`${trial_name}-vid`);
+                if (vid) {
+                    vid.addEventListener('ended', () => { btn.disabled = false; });
+                    vid.addEventListener('error', () => { btn.disabled = false; }); // Fallback
+                }
+            }
+        },
         data: { trial_type: trial_name }
     };
 }
