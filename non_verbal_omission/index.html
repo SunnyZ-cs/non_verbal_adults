@@ -73,7 +73,8 @@
                 participant_id: participant_id,
                 responses: responses,
                 feedback: feedback,
-                demographics: survey
+                demographics: survey,
+                test_order: test_order.map(t => t === 'test1' ? 'punish_ommitter' : 'punish_distal')
             };
 
             console.log("Final Data:", final_data);
@@ -143,9 +144,10 @@
     });
 
     // 3. Test Trials Loop
-    const tests = ['test1', 'test2'];
-    for (let t_idx = 0; t_idx < tests.length; t_idx++) {
-        const test_type = tests[t_idx];
+    const test_order = Math.random() < 0.5 ? ['test1', 'test2'] : ['test2', 'test1'];
+    for (let t_idx = 0; t_idx < test_order.length; t_idx++) {
+        const test_type = test_order[t_idx];
+        const condition_label = test_type === 'test1' ? 'punish_ommitter' : 'punish_distal';
         
         const questions = [
             { id: 'cause', text: 'Who caused the block to break?' },
@@ -153,9 +155,9 @@
             { id: 'punished', text: 'Who did Star punish?' },
             { id: 'should_punish', text: 'Who should Star have punished?' },
             { id: 'fair', text: 'Was the punishment fair?', type: 'yesno' },
-            { id: 'intend_left', text: 'Did the left character intend to break the block?', type: 'yesno' },
-            { id: 'intend_right', text: 'Did the right character intend to break the block?', choices: ['Yes', 'No', 'Not sure'] },
-            { id: 'which_intended', text: 'Which character, if either, intended to break the block?', choices: ['Left character', 'Right character', 'Both', 'Neither'] },
+            { id: 'intend_left', text: 'Did the green triangle intend to break the block?', type: 'yesno' },
+            { id: 'intend_right', text: 'Did the red circle intend to break the block?', choices: ['Yes', 'No', 'Not sure'] },
+            { id: 'which_intended', text: 'Which character, if either, intended to break the block?', choices: ['Green triangle', 'Red circle', 'Both', 'Neither'] },
             { id: 'deserve_punish', text: 'Did the character who was punished deserve to be punished?', type: 'yesno' }
         ];
 
@@ -172,7 +174,7 @@
                     <div class="question-text">${questions[0].text}</div>
                 </div>
             `,
-            choices: ['Left character', 'Right character'],
+            choices: ['Green triangle', 'Red circle'],
             button_html: '<button class="option-button">%choice%</button>',
             on_load: function() {
                 const btns = document.querySelectorAll('.option-button');
@@ -194,10 +196,11 @@
             },
             data: {
                 page_type: 'test_question',
-                test_type: test_type,
+                test_type: condition_label,
                 question_id: questions[0].id
             },
             on_finish: function(data) {
+                // Keep backend label as Left/Right
                 data.response_label = data.response === 0 ? 'Left' : 'Right';
             }
         });
@@ -213,15 +216,19 @@
                         <div class="question-text">${q.text}</div>
                     </div>
                 `,
-                choices: q.choices ? q.choices : (q.type === 'yesno' ? ['Yes', 'No'] : ['Left character', 'Right character']),
+                choices: q.choices ? q.choices : (q.type === 'yesno' ? ['Yes', 'No'] : ['Green triangle', 'Red circle']),
                 button_html: '<button class="option-button">%choice%</button>',
                 data: {
                     page_type: 'test_question',
-                    test_type: test_type,
+                    test_type: condition_label,
                     question_id: q.id
                 },
                 on_finish: function(data) {
-                    if (q.choices) {
+                    if (q.id === 'which_intended') {
+                        // Map user choices back to Left/Right backend labels
+                        const backend_labels = ['Left character', 'Right character', 'Both', 'Neither'];
+                        data.response_label = backend_labels[data.response];
+                    } else if (q.choices) {
                         data.response_label = q.choices[data.response];
                     } else {
                         data.response_label = data.response === 0 ? (q.type === 'yesno' ? 'Yes' : 'Left') : (q.type === 'yesno' ? 'No' : 'Right');
@@ -231,7 +238,7 @@
         }
 
         // Transition between Test Trial 1 and Test Trial 2
-        if (t_idx < tests.length - 1) {
+        if (t_idx < test_order.length - 1) {
             timeline.push({
                 type: jsPsychHtmlButtonResponse,
                 stimulus: "<h3>Ready for the next video?</h3><p>Click the button below when you are ready to continue.</p>",
