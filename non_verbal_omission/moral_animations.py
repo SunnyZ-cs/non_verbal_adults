@@ -178,7 +178,6 @@ def give_punishment(anim: AnimationHelper, authority: Agent, target: Agent, move
     for i in range(25):
         off = 5 * math.sin(i * 1.5)
         authority.x = start_gx + off
-        target.expression = Expression.SAD
         authority.arm_target_r = (star_x + off, star_y)
         anim.snap()
     authority.x = start_gx
@@ -345,7 +344,7 @@ def make_test1(out_dir):
 
     # A looks surprised / relieved; B looks guilty
     A.expression = Expression.NEUTRAL
-    B.expression = Expression.SAD
+    B.expression = Expression.NEUTRAL
     anim.pause(0.5)
 
     # Authority punishes B (the bystander who failed to act)
@@ -392,7 +391,7 @@ def make_test2(out_dir):
 
     # B stays neutral; A looks guilty
     B.expression = Expression.NEUTRAL
-    A.expression = Expression.SAD
+    A.expression = Expression.NEUTRAL
     anim.pause(0.5)
 
     # Authority punishes A (the direct cause)
