@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Non-Verbal Social Interaction Study</title>
+    <link href="https://unpkg.com/jspsych@7.3.1/css/jspsych.css" rel="stylesheet" type="text/css" />
+    <script src="https://unpkg.com/jspsych@7.3.1"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-preload@1.1.2"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://proliferate.alps.science/static/js/proliferate.js"></script>
+
+    <script src="js/consent.js"></script>
+    <script src="js/intro.js"></script>
+    <script src="js/demographic_form.js"></script>
+    
+    <style>
+        body { background-color: white; margin: 0; padding: 0; }
+        .jspsych-content-wrapper { background-color: white; }
+        .jspsych-content { max-width: 900px; }
+        .stim-container { 
+            width: 800px; 
+            height: 300px; 
+            margin: 0 auto 20px auto; 
+            background-color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .stim-layer { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            object-fit: contain;
+        }
+        .question-text { font-size: 1.4em; margin-bottom: 25px; font-weight: bold; color: #333; }
+        .option-button { 
+            padding: 12px 24px; 
+            font-size: 1.2em; 
+            margin: 0 15px; 
+            cursor: pointer;
+            border-radius: 8px;
+            border: 2px solid #212529;
+            background-color: #f8f9fa;
+            transition: background-color 0.2s;
+        }
+        .option-button:hover { background-color: #e2e6ea; }
+        #instruction-line { margin-top: 10px; font-weight: bold; color: #333; }
+    </style>
+</head>
+
+<body></body>
+<script>
+    const jsPsych = initJsPsych({
+        show_progress_bar: true,
+        on_finish: function() {
+            const data = jsPsych.data.get();
+            const participant_id = `P_${Math.floor(Math.random()*1000000)}`;
+            const responses = {};
+            
+            data.filter({page_type: 'test_question'}).values().forEach(v => {
+                responses[`${v.test_type}_${v.question_id}`] = v.response_label;
+            });
+
+            const feedback = data.filter({page_type: 'final_feedback'}).values()[0]?.response?.feedback || "";
+            const survey = data.filter({page_type: 'participant_survey'}).values()[0]?.response || {};
+            
+            const final_data = {
+                participant_id: participant_id,
+                responses: responses,
+                feedback: feedback,
+                demographics: survey
+            };
+
+            console.log("Final Data:", final_data);
+            proliferate.submit(final_data);
+
+            document.body.innerHTML = '<div style="margin: 100px auto; text-align: center; font-family: sans-serif;">' +
+                '<h3>Thank you for participating!</h3>' +
+                '<p>Redirecting you back to Prolific...</p>' +
+                '</div>';
+        }
+    });
+
+    const timeline = [];
+
+    // Preload
+    timeline.push({
+        type: jsPsychPreload,
+        auto_preload: true,
+        images: [
+            'images/intro.png', 
+            'test1_end.png', 
+            'test2_end.png',
+            'test1.gif',
+            'test2.gif',
+            'fam1.gif',
+            'fam2.gif'
+        ]
+    });
+
+    timeline.push(consent);
+    timeline.push(intro);
+
+    // 1. Familiarization 1
+    timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<div class="stim-container"><img src="fam1.gif" class="stim-layer"></div>`,
+        choices: "NO_KEYS",
+        trial_duration: 12960, 
+        prompt: "<p style='color: #666;'>Please watch the characters carefully.</p>",
+        data: { page_type: 'familiarization', fam_id: 'fam1' }
+    });
+
+    // Transition between Fam 1 and Fam 2
+    timeline.push({
+        type: jsPsychHtmlButtonResponse,
+        stimulus: "<h3>great you've finished first part -- ready for the next part?</h3>",
+        choices: ['next'],
+        button_html: '<button class="option-button">%choice%</button>'
+    });
+
+    // 2. Familiarization 2
+    timeline.push({
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<div class="stim-container"><img src="fam2.gif" class="stim-layer"></div>`,
+        choices: "NO_KEYS",
+        trial_duration: 13480, 
+        prompt: "<p style='color: #666;'>Please watch the characters carefully.</p>",
+        data: { page_type: 'familiarization', fam_id: 'fam2' }
+    });
+
+    // Transition between Fam 2 and Test 1
+    timeline.push({
+        type: jsPsychHtmlButtonResponse,
+        stimulus: "<h3>great you've finished second part -- ready for the next part?</h3>",
+        choices: ['next'],
+        button_html: '<button class="option-button">%choice%</button>'
+    });
+
+    // 3. Test Trials Loop
+    const tests = ['test1', 'test2'];
+    for (let t_idx = 0; t_idx < tests.length; t_idx++) {
+        const test_type = tests[t_idx];
+        
+        const questions = [
+            { id: 'cause', text: 'Who caused the block to break?' },
+            { id: 'broke', text: 'Who broke the block?' },
+            { id: 'punished', text: 'Who did Star punish?' },
+            { id: 'should_punish', text: 'Who should Star have punished?' },
+            { id: 'fair', text: 'Was the punishment fair?', type: 'yesno' },
+            { id: 'intend_left', text: 'Did the left character intend to break the block?', type: 'yesno' },
+            { id: 'intend_right', text: 'Did the right character intend to break the block?', choices: ['Yes', 'No', 'Not sure'] },
+            { id: 'which_intended', text: 'Which character, if either, intended to break the block?', choices: ['Left character', 'Right character', 'Both', 'Neither'] },
+            { id: 'deserve_punish', text: 'Did the character who was punished deserve to be punished?', type: 'yesno' }
+        ];
+
+        // Trial 1: Animation + First Question
+        timeline.push({
+            type: jsPsychHtmlButtonResponse,
+            stimulus: `
+                <div class="stim-container">
+                    <img id="test-static" src="${test_type}_end.png" class="stim-layer" style="visibility: hidden;">
+                    <img id="test-anim" src="${test_type}.gif" class="stim-layer">
+                </div>
+                <div id="instruction-line">now watch what happens</div>
+                <div id="question-area" style="visibility: hidden; margin-top: 20px;">
+                    <div class="question-text">${questions[0].text}</div>
+                </div>
+            `,
+            choices: ['Left character', 'Right character'],
+            button_html: '<button class="option-button">%choice%</button>',
+            on_load: function() {
+                const btns = document.querySelectorAll('.option-button');
+                btns.forEach(b => b.style.display = 'none');
+                
+                // Animation ends at 14.44s.
+                // We show the static layer at 14.44s to "freeze" the frame perfectly.
+                setTimeout(() => {
+                    document.getElementById('test-static').style.visibility = 'visible';
+                    document.getElementById('test-anim').style.visibility = 'hidden';
+                }, 14440);
+
+                // Wait another 3 seconds of pause before showing the question (total 17.44s)
+                setTimeout(() => {
+                    document.getElementById('instruction-line').style.display = 'none';
+                    document.getElementById('question-area').style.visibility = 'visible';
+                    btns.forEach(b => b.style.display = 'inline-block');
+                }, 17440);
+            },
+            data: {
+                page_type: 'test_question',
+                test_type: test_type,
+                question_id: questions[0].id
+            },
+            on_finish: function(data) {
+                data.response_label = data.response === 0 ? 'Left' : 'Right';
+            }
+        });
+
+        // Remaining Questions
+        for (let i = 1; i < questions.length; i++) {
+            const q = questions[i];
+            timeline.push({
+                type: jsPsychHtmlButtonResponse,
+                stimulus: `
+                    <div class="stim-container"><img src="${test_type}_end.png" class="stim-layer"></div>
+                    <div style="margin-top: 20px;">
+                        <div class="question-text">${q.text}</div>
+                    </div>
+                `,
+                choices: q.choices ? q.choices : (q.type === 'yesno' ? ['Yes', 'No'] : ['Left character', 'Right character']),
+                button_html: '<button class="option-button">%choice%</button>',
+                data: {
+                    page_type: 'test_question',
+                    test_type: test_type,
+                    question_id: q.id
+                },
+                on_finish: function(data) {
+                    if (q.choices) {
+                        data.response_label = q.choices[data.response];
+                    } else {
+                        data.response_label = data.response === 0 ? (q.type === 'yesno' ? 'Yes' : 'Left') : (q.type === 'yesno' ? 'No' : 'Right');
+                    }
+                }
+            });
+        }
+
+        // Transition between Test Trial 1 and Test Trial 2
+        if (t_idx < tests.length - 1) {
+            timeline.push({
+                type: jsPsychHtmlButtonResponse,
+                stimulus: "<h3>Ready for the next video?</h3><p>Click the button below when you are ready to continue.</p>",
+                choices: ['next'],
+                button_html: '<button class="option-button">%choice%</button>'
+            });
+        }
+    }
+
+    // 4. Final Feedback
+    timeline.push({
+        type: jsPsychSurveyText,
+        questions: [{ 
+            prompt: "Did anything about the animation seem unclear or confusing?", 
+            name: 'feedback', 
+            rows: 5 
+        }],
+        data: { page_type: 'final_feedback' }
+    });
+
+    // 5. Demographics
+    timeline.push(demographic_form);
+
+    jsPsych.run(timeline);
+</script>
+
+</html>
