@@ -232,7 +232,7 @@ def make_fam1(out_dir):
     ram_into_cube(anim, A, cube)
 
     # A looks surprised / guilty
-    A.expression = Expression.SAD
+    A.expression = Expression.NEUTRAL
 
     # Authority descends and punishes A
     give_punishment(anim, authority, A)
@@ -283,12 +283,13 @@ def make_fam2(out_dir):
     anim.move(B, block_x, 227, 0.3)
 
     # A pushes but cube stays whole — B holds firm
-    A.expression = Expression.ANGRY
+    A.expression = Expression.NEUTRAL
     B.expression = Expression.NEUTRAL
     anim.pause(0.5)
 
     # B's arm reaches out to hold A back
     B.arm_target_l = (A.x + AGENT_SIZE / 2, A.y)
+    A.expression = Expression.ANGRY
     anim.pause(0.8)
     B.arm_target_l = None
 
