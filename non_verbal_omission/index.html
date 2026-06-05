@@ -180,19 +180,20 @@
                 const btns = document.querySelectorAll('.option-button');
                 btns.forEach(b => b.style.display = 'none');
                 
-                // Animation ends at 14.44s.
-                // We show the static layer at 14.44s to "freeze" the frame perfectly.
+                const test_duration = test_type === 'test1' ? 14440 : 13200;
+                
+                // We show the static layer to "freeze" the frame perfectly.
                 setTimeout(() => {
                     document.getElementById('test-static').style.visibility = 'visible';
                     document.getElementById('test-anim').style.visibility = 'hidden';
-                }, 14440);
+                }, test_duration);
 
-                // Wait another 3 seconds of pause before showing the question (total 17.44s)
+                // Wait another 3 seconds of pause before showing the question
                 setTimeout(() => {
                     document.getElementById('instruction-line').style.display = 'none';
                     document.getElementById('question-area').style.visibility = 'visible';
                     btns.forEach(b => b.style.display = 'inline-block');
-                }, 17440);
+                }, test_duration + 3000);
             },
             data: {
                 page_type: 'test_question',

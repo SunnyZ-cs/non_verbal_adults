@@ -19,14 +19,16 @@ import os
 from PIL import Image, ImageDraw
 
 # ── Re-use every constant and helper from the reference code ──────────────────
-sys.path.insert(0, "/Users/sunny/Desktop")
+sys.path.insert(0, "/Users/sunny/.gemini/antigravity-ide/scratch")
 from familiarization_trials import (
     Color, Shape, Expression, Agent, Prop, Renderer, AnimationHelper,
-    Timing, FPS, WIDTH, HEIGHT, CENTER_X, AGENT_SIZE, GROUND_Y,
+    Timing, FPS, WIDTH, HEIGHT, AGENT_SIZE, GROUND_Y,
     hex_to_rgb,
 )
 
-OUT = "/Users/sunny/.gemini/antigravity/scratch/moral_animations"
+CENTER_X = WIDTH // 2
+
+OUT = "/Users/sunny/.gemini/antigravity-ide/scratch/non_verbal_adults/non_verbal_omission"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # BreakableCube  (identical to test_trials.py)
@@ -165,7 +167,7 @@ def give_reward(anim: AnimationHelper, authority: Agent, target: Agent):
     anim.move(target, target.start_x, target.start_y, Timing.MOVE_DURATION)
 
 
-def give_punishment(anim: AnimationHelper, authority: Agent, target: Agent):
+def give_punishment(anim: AnimationHelper, authority: Agent, target: Agent, move_back=True):
     """Authority floats down, shakes in anger, removes star."""
     anim.move(authority, target.x, target.y - 140, Timing.MOVE_DURATION)
     authority.expression = Expression.ANGRY
@@ -189,7 +191,8 @@ def give_punishment(anim: AnimationHelper, authority: Agent, target: Agent):
     anim.pause(Timing.REWARD_DURATION)
     authority.expression = Expression.NEUTRAL
     anim.move(authority, CENTER_X, 60, Timing.MOVE_DURATION)
-    anim.move(target, target.start_x, target.start_y, Timing.MOVE_DURATION)
+    if move_back:
+        anim.move(target, target.start_x, target.start_y, Timing.MOVE_DURATION)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -239,10 +242,10 @@ def make_fam1(out_dir):
 
     path = os.path.join(out_dir, "fam1.gif")
     anim.frames[0].save(path, save_all=True, append_images=anim.frames[1:],
-                        duration=1000 // FPS, loop=0)
+                        duration=1000 // FPS, loop=1)
     print(f"  Saved {path}")
     # Freeze frame
-    anim.frames[-1].save(path.replace(".gif", "_freeze.png"))
+    anim.frames[-1].save(path.replace(".gif", "_end.png"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -303,9 +306,9 @@ def make_fam2(out_dir):
 
     path = os.path.join(out_dir, "fam2.gif")
     anim.frames[0].save(path, save_all=True, append_images=anim.frames[1:],
-                        duration=1000 // FPS, loop=0)
+                        duration=1000 // FPS, loop=1)
     print(f"  Saved {path}")
-    anim.frames[-1].save(path.replace(".gif", "_freeze.png"))
+    anim.frames[-1].save(path.replace(".gif", "_end.png"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -352,9 +355,9 @@ def make_test1(out_dir):
 
     path = os.path.join(out_dir, "test1.gif")
     anim.frames[0].save(path, save_all=True, append_images=anim.frames[1:],
-                        duration=1000 // FPS, loop=0)
+                        duration=1000 // FPS, loop=1)
     print(f"  Saved {path}")
-    anim.frames[-1].save(path.replace(".gif", "_freeze.png"))
+    anim.frames[-1].save(path.replace(".gif", "_end.png"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -395,13 +398,13 @@ def make_test2(out_dir):
     anim.pause(0.5)
 
     # Authority punishes A (the direct cause)
-    give_punishment(anim, authority, A)
+    give_punishment(anim, authority, A, move_back=False)
 
     path = os.path.join(out_dir, "test2.gif")
     anim.frames[0].save(path, save_all=True, append_images=anim.frames[1:],
-                        duration=1000 // FPS, loop=0)
+                        duration=1000 // FPS, loop=1)
     print(f"  Saved {path}")
-    anim.frames[-1].save(path.replace(".gif", "_freeze.png"))
+    anim.frames[-1].save(path.replace(".gif", "_end.png"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
