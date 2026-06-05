@@ -19,14 +19,12 @@ import os
 from PIL import Image, ImageDraw
 
 # ── Re-use every constant and helper from the reference code ──────────────────
-sys.path.insert(0, "/Users/sunny/.gemini/antigravity-ide/scratch")
+sys.path.insert(0, "/Users/sunny/.gemini/antigravity-ide/scratch/cause_fault_punish/code/experiments/non_verbal_experiment_animation_materials")
 from familiarization_trials import (
     Color, Shape, Expression, Agent, Prop, Renderer, AnimationHelper,
-    Timing, FPS, WIDTH, HEIGHT, AGENT_SIZE, GROUND_Y,
+    Timing, FPS, WIDTH, HEIGHT, CENTER_X, AGENT_SIZE, GROUND_Y,
     hex_to_rgb,
 )
-
-CENTER_X = WIDTH // 2
 
 OUT = "/Users/sunny/.gemini/antigravity-ide/scratch/non_verbal_adults/non_verbal_omission"
 
