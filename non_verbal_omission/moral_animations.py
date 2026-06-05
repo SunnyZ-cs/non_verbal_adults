@@ -240,7 +240,7 @@ def make_fam1(out_dir):
 
     path = os.path.join(out_dir, "fam1.gif")
     anim.frames[0].save(path, save_all=True, append_images=anim.frames[1:],
-                        duration=1000 // FPS, loop=1)
+                        duration=1000 // FPS, loop=None)
     print(f"  Saved {path}")
     # Freeze frame
     anim.frames[-1].save(path.replace(".gif", "_end.png"))
@@ -304,7 +304,7 @@ def make_fam2(out_dir):
 
     path = os.path.join(out_dir, "fam2.gif")
     anim.frames[0].save(path, save_all=True, append_images=anim.frames[1:],
-                        duration=1000 // FPS, loop=1)
+                        duration=1000 // FPS, loop=None)
     print(f"  Saved {path}")
     anim.frames[-1].save(path.replace(".gif", "_end.png"))
 
@@ -353,7 +353,7 @@ def make_test1(out_dir):
 
     path = os.path.join(out_dir, "test1.gif")
     anim.frames[0].save(path, save_all=True, append_images=anim.frames[1:],
-                        duration=1000 // FPS, loop=1)
+                        duration=1000 // FPS, loop=None)
     print(f"  Saved {path}")
     anim.frames[-1].save(path.replace(".gif", "_end.png"))
 
@@ -400,7 +400,7 @@ def make_test2(out_dir):
 
     path = os.path.join(out_dir, "test2.gif")
     anim.frames[0].save(path, save_all=True, append_images=anim.frames[1:],
-                        duration=1000 // FPS, loop=1)
+                        duration=1000 // FPS, loop=None)
     print(f"  Saved {path}")
     anim.frames[-1].save(path.replace(".gif", "_end.png"))
 
