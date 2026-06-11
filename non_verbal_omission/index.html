@@ -55,6 +55,19 @@
 
 <body></body>
 <script>
+    const fam_combo_index = Math.floor(Math.random() * 8) + 1;
+    const fam_combo_gif = `Fam_Combo_${fam_combo_index}.gif`;
+    const fam_combo_freeze = `Fam_Combo_${fam_combo_index}_freeze.png`;
+
+    const fam_durations = {
+        1: 120960, 2: 118480, 3: 118480, 4: 120960,
+        5: 120960, 6: 118480, 7: 118480, 8: 120960
+    };
+    const fam_duration = fam_durations[fam_combo_index];
+    const fam_freeze_duration = 4000;
+
+    const test_order = Math.random() < 0.5 ? ['test1', 'test2'] : ['test2', 'test1'];
+
     const jsPsych = initJsPsych({
         show_progress_bar: true,
         on_finish: function() {
@@ -74,7 +87,8 @@
                 responses: responses,
                 feedback: feedback,
                 demographics: survey,
-                test_order: test_order.map(t => t === 'test1' ? 'punish_ommitter' : 'punish_distal')
+                test_order: test_order.map(t => t === 'test1' ? 'punish_ommitter' : 'punish_distal'),
+                fam_combo: fam_combo_index
             };
 
             console.log("Final Data:", final_data);
@@ -90,34 +104,52 @@
     const timeline = [];
 
     // Preload
+    const images_to_preload = [
+        'images/intro.png', 
+        'test1_end.png', 
+        'test2_end.png',
+        'test1.gif',
+        'test2.gif',
+        'fam2.gif'
+    ];
+    for (let i = 1; i <= 8; i++) {
+        images_to_preload.push(`Fam_Combo_${i}.gif`);
+        images_to_preload.push(`Fam_Combo_${i}_freeze.png`);
+    }
+
     timeline.push({
         type: jsPsychPreload,
         auto_preload: true,
-        images: [
-            'images/intro.png', 
-            'test1_end.png', 
-            'test2_end.png',
-            'test1.gif',
-            'test2.gif',
-            'fam1.gif',
-            'fam2.gif'
-        ]
+        images: images_to_preload
     });
 
     timeline.push(consent);
     timeline.push(intro);
 
-    // 1. Familiarization 1
+    // 1. Familiarization Phase (Random Combo)
     timeline.push({
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<div class="stim-container"><img src="fam1.gif" class="stim-layer"></div>`,
+        stimulus: `
+            <div class="stim-container">
+                <img id="fam-static" src="${fam_combo_freeze}" class="stim-layer" style="visibility: hidden;">
+                <img id="fam-anim" src="${fam_combo_gif}" class="stim-layer">
+            </div>
+        `,
         choices: "NO_KEYS",
-        trial_duration: 12960, 
+        trial_duration: fam_duration + fam_freeze_duration,
         prompt: "<p style='color: #666;'>Please watch the characters carefully.</p>",
-        data: { page_type: 'familiarization', fam_id: 'fam1' }
+        on_load: function() {
+            setTimeout(() => {
+                const staticEl = document.getElementById('fam-static');
+                const animEl = document.getElementById('fam-anim');
+                if (staticEl) staticEl.style.visibility = 'visible';
+                if (animEl) animEl.style.visibility = 'hidden';
+            }, fam_duration);
+        },
+        data: { page_type: 'familiarization', fam_id: `fam_combo_${fam_combo_index}` }
     });
 
-    // Transition between Fam 1 and Fam 2
+    // Transition after familiarization
     timeline.push({
         type: jsPsychHtmlButtonResponse,
         stimulus: "<h3>great you've finished first part -- ready for the next part?</h3>",
@@ -125,26 +157,27 @@
         button_html: '<button class="option-button">%choice%</button>'
     });
 
-    // 2. Familiarization 2
-    timeline.push({
-        type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<div class="stim-container"><img src="fam2.gif" class="stim-layer"></div>`,
-        choices: "NO_KEYS",
-        trial_duration: 13480, 
-        prompt: "<p style='color: #666;'>Please watch the characters carefully.</p>",
-        data: { page_type: 'familiarization', fam_id: 'fam2' }
-    });
+    // 2. Test Phase: fam_2 repeated 3 times at the beginning
+    for (let i = 1; i <= 3; i++) {
+        timeline.push({
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: `<div class="stim-container"><img src="fam2.gif" class="stim-layer"></div>`,
+            choices: "NO_KEYS",
+            trial_duration: 13480, 
+            prompt: "<p style='color: #666;'>Please watch the characters carefully.</p>",
+            data: { page_type: 'test_fam_repetition', fam_id: 'fam2', repetition: i }
+        });
 
-    // Transition between Fam 2 and Test 1
-    timeline.push({
-        type: jsPsychHtmlButtonResponse,
-        stimulus: "<h3>great you've finished second part -- ready for the next part?</h3>",
-        choices: ['next'],
-        button_html: '<button class="option-button">%choice%</button>'
-    });
+        // Transition after each of the 3 repetitions
+        timeline.push({
+            type: jsPsychHtmlButtonResponse,
+            stimulus: "<h3>Ready for the next video?</h3><p>Click the button below when you are ready to continue.</p>",
+            choices: ['next'],
+            button_html: '<button class="option-button">%choice%</button>'
+        });
+    }
 
     // 3. Test Trials Loop
-    const test_order = Math.random() < 0.5 ? ['test1', 'test2'] : ['test2', 'test1'];
     for (let t_idx = 0; t_idx < test_order.length; t_idx++) {
         const test_type = test_order[t_idx];
         const condition_label = test_type === 'test1' ? 'punish_ommitter' : 'punish_distal';
