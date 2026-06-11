@@ -144,7 +144,7 @@
                 const animEl = document.getElementById('fam-anim');
                 if (staticEl) staticEl.style.visibility = 'visible';
                 if (animEl) animEl.style.visibility = 'hidden';
-            }, fam_duration);
+            }, fam_duration - 400);
         },
         data: { page_type: 'familiarization', fam_id: `fam_combo_${fam_combo_index}` }
     });
