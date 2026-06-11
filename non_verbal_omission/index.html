@@ -161,19 +161,22 @@
     for (let i = 1; i <= 3; i++) {
         timeline.push({
             type: jsPsychHtmlKeyboardResponse,
-            stimulus: `<div class="stim-container"><img src="fam2.gif" class="stim-layer"></div>`,
+            stimulus: function() {
+                return `<div class="stim-container"><img src="fam2.gif?t=${Date.now()}" class="stim-layer"></div>`;
+            },
             choices: "NO_KEYS",
             trial_duration: 13480, 
             prompt: "<p style='color: #666;'>Please watch the characters carefully.</p>",
             data: { page_type: 'test_fam_repetition', fam_id: 'fam2', repetition: i }
         });
 
-        // Transition after each of the 3 repetitions
+        // Very brief blank screen (500ms) separating repeats
         timeline.push({
-            type: jsPsychHtmlButtonResponse,
-            stimulus: "<h3>Ready for the next video?</h3><p>Click the button below when you are ready to continue.</p>",
-            choices: ['next'],
-            button_html: '<button class="option-button">%choice%</button>'
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: "",
+            choices: "NO_KEYS",
+            trial_duration: 500,
+            data: { page_type: 'test_fam_blank', repetition: i }
         });
     }
 
