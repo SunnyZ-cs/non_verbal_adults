@@ -284,6 +284,40 @@ function buildTestTimeline(testObj) {
 //  RUN THE EXPERIMENT
 // ════════════════════════════════════════════════════════════════════
 
+const debrief_page = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: `
+        <div class="instructions-box" style="max-width: 800px; margin: 40px auto; text-align: left; line-height: 1.7; font-family: Arial, sans-serif;">
+            <h1 style="text-align: center; margin-bottom: 30px; font-size: 2.2em; font-weight: normal; color: #333;">Thank you!</h1>
+            
+            <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;">This study is a follow-up to our previous research examining how children trace fault and responsibility in complex causal chains.</p>
+            
+            <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;">In our previous studies, we examined children's judgments about causal responsibility in situations with multiple agents operating in chains. For example, Andy hits Suzy with his bike, Suzy falls into the fence, and the fence breaks. We found that younger children tend to focus on the direct, proximal cause (the agent that physically contacts the object), while older children can trace responsibility back to the initial, distal cause (the agent that started the chain reaction).</p>
+            
+            <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;">With this new study, we are using a non-verbal eye-tracking design. By measuring where children look on the screen while watching shapes interact, we are testing whether younger children can represent these complex causal chains implicitly, even when they struggle to express these relationships verbally.</p>
+            
+            <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;">Although children's responses can vary, there aren't any "right" or "wrong" answers to the questions. We are just interested in looking at the average looking patterns across children, and we won't take any specific answers as "good" or "bad".</p>
+            
+            <p style="margin-bottom: 2em; font-size: 1.05em; color: #444;">If you are interested in learning more about this, please visit our lab website: <a href="https://markmanlab.stanford.edu" target="_blank" style="color: #337ab7; text-decoration: none;">markmanlab.stanford.edu</a>, or check out one of these papers: 
+            <a href="https://davdrose.github.io/assets/pdf/cause_fault_cog_sci.pdf" target="_blank" style="color: #337ab7; text-decoration: none;">https://davdrose.github.io/assets/pdf/cause_fault_cog_sci.pdf</a> ; 
+            <a href="https://cicl.stanford.edu/papers/rose2025cause.pdf" target="_blank" style="color: #337ab7; text-decoration: none;">https://cicl.stanford.edu/papers/rose2025cause.pdf</a>. Thank you again for your participation!</p>
+        </div>
+    `,
+    choices: ['Share this study on Facebook!', 'Exit'],
+    button_html: [
+        '<button class="jspsych-btn" style="background-color: #3b5998; color: white; border: none; padding: 12px 24px; font-size: 1.1em; border-radius: 4px; cursor: pointer; margin-right: 15px; font-weight: bold;">%choice%</button>',
+        '<button class="jspsych-btn" style="background-color: #5cb85c; color: white; border: none; padding: 12px 24px; font-size: 1.1em; border-radius: 4px; cursor: pointer; font-weight: bold;">%choice%</button>'
+    ],
+    on_finish: function(data) {
+        if (data.response === 0) {
+            const studyUrl = window.location.href;
+            const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(studyUrl)}`;
+            window.open(fbShareUrl, '_blank');
+        }
+    },
+    data: { trial_type: 'debrief' }
+};
+
 jsPsych.run([
     // ── Setup ──
     { type: jsPsychFullscreen, fullscreen_mode: true },
@@ -323,5 +357,6 @@ jsPsych.run([
 
     // ── End ──
     { type: jsPsychFullscreen, fullscreen_mode: false, delay_after: 0 },
-    { type: chsSurvey.ExitSurveyPlugin }
+    { type: chsSurvey.ExitSurveyPlugin },
+    debrief_page
 ]);
