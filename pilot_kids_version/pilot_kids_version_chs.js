@@ -121,6 +121,7 @@ const video_consent = {
     procedures:  'Your child will watch short animated sequences. We will record their eye movements to measure their looking times.',
     risk_statement: 'There are no expected risks to participation.',
     payment:     'After you finish the study, we will email you a $5 Amazon gift card within approximately 3–5 business days.',
+    research_rights_statement: 'This research has been reviewed and approved by an Institutional Review Board (“IRB”), a group of people who oversee research involving humans as participants. Information to help you understand research is on-line at https://irb.stanford.edu/. You may talk to a IRB staff member at (650) 723-2480 or irb2-manager@lists.stanford.edu for any of the following: 1) Your questions, concerns, or complaints are not being answered by the research team; 2) you cannot reach the research team; 3) you want to talk to someone besides the research team; 4) you have questions about your rights as a research subject; 5) you want to get information or provide input about this research.',
     include_databrary: true
 };
 
