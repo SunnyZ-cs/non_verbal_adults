@@ -286,7 +286,7 @@ function buildTestTimeline(testObj) {
 // ════════════════════════════════════════════════════════════════════
 
 const debrief_page = {
-    type: jsPsychHtmlButtonResponse,
+    type: jsPsychHtmlKeyboardResponse,
     stimulus: `
         <div class="instructions-box" style="max-width: 800px; margin: 40px auto; text-align: left; line-height: 1.7; font-family: Arial, sans-serif;">
             <h1 style="text-align: center; margin-bottom: 30px; font-size: 2.2em; font-weight: normal; color: #333;">Thank you!</h1>
@@ -301,23 +301,32 @@ const debrief_page = {
             
             <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;"><strong>A note on child behavior:</strong> Please note that there are many reasons a child might look more or less at a particular shape on any given trial (such as a preference for a certain color or shape, or simply looking around), and that is completely normal and okay! That is why we average looking times over many children to find general patterns rather than looking at individual responses.</p>
             
-            <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;"><strong>Compensation:</strong> As a reminder, you will receive a $5 Amazon.com gift card via email within approximately 3–5 business days of completing the study.</p>
+            <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;"><strong>Compensation:</strong> As a reminder, you will receive a $5 Amazon.com gift card via email within approximately a week of completing the study.</p>
             
-            <p style="margin-bottom: 2em; font-size: 1.05em; color: #444;">If you are interested in learning more about this topic, please visit our lab website: <a href="https://markmanlab.stanford.edu" target="_blank" style="color: #337ab7; text-decoration: none;">markmanlab.stanford.edu</a>, or check out one of these papers: 
-            <a href="https://davdrose.github.io/assets/pdf/cause_fault_cog_sci.pdf" target="_blank" style="color: #337ab7; text-decoration: none;">https://davdrose.github.io/assets/pdf/cause_fault_cog_sci.pdf</a> ; 
-            <a href="https://cicl.stanford.edu/papers/rose2025cause.pdf" target="_blank" style="color: #337ab7; text-decoration: none;">https://cicl.stanford.edu/papers/rose2025cause.pdf</a>. Thank you again for your participation!</p>
+            <p style="margin-bottom: 2em; font-size: 1.05em; color: #444;">If you are interested in learning more about this topic, please visit our lab website: <a href="https://markmanlab.stanford.edu" target="_blank" style="color: #337ab7; text-decoration: none;">markmanlab.stanford.edu</a>, or check out this paper: 
+            <a href="https://davdrose.github.io/assets/pdf/cause_fault_cog_sci.pdf" target="_blank" style="color: #337ab7; text-decoration: none;">https://davdrose.github.io/assets/pdf/cause_fault_cog_sci.pdf</a>. Thank you again for your participation!</p>
+            
+            <div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
+                <button id="fb-share-btn" class="jspsych-btn" style="background-color: #3b5998; color: white; border: none; padding: 12px 24px; font-size: 1.1em; border-radius: 4px; cursor: pointer; margin-right: 15px; font-weight: bold;">Share this study on Facebook!</button>
+                <button id="exit-btn" class="jspsych-btn" style="background-color: #5cb85c; color: white; border: none; padding: 12px 24px; font-size: 1.1em; border-radius: 4px; cursor: pointer; font-weight: bold;">Exit</button>
+            </div>
         </div>
     `,
-    choices: ['Share this study on Facebook!', 'Exit'],
-    button_html: [
-        '<button class="jspsych-btn" style="background-color: #3b5998; color: white; border: none; padding: 12px 24px; font-size: 1.1em; border-radius: 4px; cursor: pointer; margin-right: 15px; font-weight: bold;">%choice%</button>',
-        '<button class="jspsych-btn" style="background-color: #5cb85c; color: white; border: none; padding: 12px 24px; font-size: 1.1em; border-radius: 4px; cursor: pointer; font-weight: bold;">%choice%</button>'
-    ],
-    on_finish: function(data) {
-        if (data.response === 0) {
-            const studyUrl = window.location.href;
-            const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(studyUrl)}`;
-            window.open(fbShareUrl, '_blank');
+    choices: "NO_KEYS",
+    on_load: function() {
+        const fbBtn = document.getElementById('fb-share-btn');
+        if (fbBtn) {
+            fbBtn.addEventListener('click', function() {
+                const studyUrl = window.location.href;
+                const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(studyUrl)}`;
+                window.open(fbShareUrl, '_blank');
+            });
+        }
+        const exitBtn = document.getElementById('exit-btn');
+        if (exitBtn) {
+            exitBtn.addEventListener('click', function() {
+                window.location.href = "https://childrenhelpingscience.com/studies/history/";
+            });
         }
     },
     data: { trial_type: 'debrief' }
