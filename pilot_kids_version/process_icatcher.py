@@ -23,7 +23,10 @@ def run_icatcher(video_path, output_dir="icatcher_output"):
         video_path, 
         "--output_annotation", output_dir,
         "--overwrite",
-        "--gpu_id", "-1"
+        "--gpu_id", "-1",
+        "--fd_parallel_processing",
+        "--fd_num_cpus", "-1",
+        "--fd_skip_frames", "3"
     ]
     
     try:
