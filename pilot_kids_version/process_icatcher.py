@@ -17,11 +17,13 @@ def run_icatcher(video_path, output_dir="icatcher_output"):
         
     print(f"Running iCatcher+ on {video_path}...")
     
-    # Standard iCatcher+ CLI command: icatcher <video_path> --output_dir <dir>
+    # Standard iCatcher+ CLI command
     cmd = [
         "icatcher", 
         video_path, 
-        "--output_dir", output_dir
+        "--output_annotation", output_dir,
+        "--overwrite",
+        "--gpu_id", "-1"
     ]
     
     try:
@@ -50,16 +52,18 @@ def analyze_gaze(icatcher_output_file, freeze_duration=20.0, anim_duration=18.76
         return 0, 0, 0
         
     try:
-        df = pd.read_csv(icatcher_output_file)
-        if 'prediction' not in df.columns and 'label' not in df.columns:
-            df = pd.read_csv(icatcher_output_file, delim_whitespace=True)
+        if os.path.exists(icatcher_output_file) and os.path.getsize(icatcher_output_file) == 0:
+            return 0, 0, 0
+            
+        # Raw output file from iCatcher has no header: frame_number, prediction, confidence
+        df = pd.read_csv(icatcher_output_file, header=None)
+        if len(df.columns) >= 2:
+            pred_series = df[1].astype(str).str.strip().str.lower()
+        else:
+            print(f"Unexpected column count in {icatcher_output_file}: {df.columns}")
+            return 0, 0, 0
     except Exception as e:
         print(f"Failed to read {icatcher_output_file}: {e}")
-        return 0, 0, 0
-
-    pred_col = 'prediction' if 'prediction' in df.columns else 'label' if 'label' in df.columns else None
-    if not pred_col:
-        print(f"Could not find a prediction column in {icatcher_output_file}. Columns found: {df.columns}")
         return 0, 0, 0
 
     # Calculate how many frames represent the last 20 seconds.
@@ -68,18 +72,16 @@ def analyze_gaze(icatcher_output_file, freeze_duration=20.0, anim_duration=18.76
     total_duration = bullseye_duration + anim_duration + freeze_duration
     fraction_to_keep = freeze_duration / total_duration
     
-    total_frames = len(df)
+    total_frames = len(pred_series)
     frames_to_keep = int(total_frames * fraction_to_keep)
     
-    # Slice the dataframe to only include the last 'frames_to_keep'
+    # Slice the series to only include the last 'frames_to_keep'
     if frames_to_keep > 0:
-        df = df.tail(frames_to_keep).copy()
+        pred_series = pred_series.tail(frames_to_keep)
     
-    df[pred_col] = df[pred_col].astype(str).str.lower()
-    
-    left_frames = (df[pred_col] == 'left').sum()
-    right_frames = (df[pred_col] == 'right').sum()
-    away_frames = (df[pred_col] == 'away').sum()
+    left_frames = (pred_series == 'left').sum()
+    right_frames = (pred_series == 'right').sum()
+    away_frames = (pred_series == 'away').sum()
     
     return left_frames, right_frames, away_frames
 
