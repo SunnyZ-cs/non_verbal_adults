@@ -122,6 +122,66 @@ def parse_video_filename(filename):
         return int(match.group(1)), match.group(2)
     return None, None
 
+def prepare_videos(videos_dir):
+    """
+    Finds all non-consent webm and mp4 videos.
+    Converts webm videos to mp4 without audio if needed.
+    Returns list of dicts: {'orig_name': ..., 'path': ..., 'is_temp': ...}
+    """
+    temp_dir = os.path.join(videos_dir, "temp_mp4")
+    all_webms = glob.glob(os.path.join(videos_dir, "*.webm"))
+    all_mp4s = glob.glob(os.path.join(videos_dir, "*.mp4"))
+    
+    prepared = []
+    
+    # Check if there are any webms to convert
+    webms_to_convert = [w for w in all_webms if not os.path.basename(w).startswith("consent-")]
+    
+    if webms_to_convert:
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+            
+    # Process webms (convert to mp4)
+    for webm in webms_to_convert:
+        base_name = os.path.basename(webm)
+        mp4_name = os.path.splitext(base_name)[0] + ".mp4"
+        mp4_path = os.path.join(temp_dir, mp4_name)
+        
+        # Convert webm to mp4 using ffmpeg
+        if not os.path.exists(mp4_path):
+            print(f"Converting {base_name} to MP4 format for compatibility...")
+            cmd = [
+                "ffmpeg", "-y", "-i", webm,
+                "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                mp4_path
+            ]
+            try:
+                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+            except Exception as e:
+                print(f"Error converting {base_name}: {e}")
+                continue
+                
+        prepared.append({
+            "orig_name": base_name,
+            "path": mp4_path,
+            "is_temp": True
+        })
+        
+    # Process existing mp4s (non-consent)
+    for mp4 in all_mp4s:
+        base_name = os.path.basename(mp4)
+        if base_name.startswith("consent-"):
+            continue
+        if "temp_mp4" in mp4:
+            continue
+        prepared.append({
+            "orig_name": base_name,
+            "path": mp4,
+            "is_temp": False
+        })
+        
+    return prepared, temp_dir
+
 def main():
     if len(sys.argv) < 3:
         print("Usage: python process_icatcher.py <path_to_videos_directory> <path_to_response_json>")
@@ -142,48 +202,55 @@ def main():
     test_orders = load_test_orders(json_path)
     print(f"Loaded trial configurations for {len(test_orders)} responses from JSON.")
     
-    # Scan videos directory
-    all_files = glob.glob(os.path.join(videos_dir, "*.webm")) + glob.glob(os.path.join(videos_dir, "*.mp4"))
+    # Prepare videos (converts webm to mp4 if needed)
+    prepared, temp_dir = prepare_videos(videos_dir)
+    print(f"Found {len(prepared)} experimental trial videos to process.")
     
     results = []
     
-    for video in all_files:
-        base_name = os.path.basename(video)
-        if base_name.startswith("consent-"):
-            continue
+    try:
+        for item in prepared:
+            video_path = item["path"]
+            orig_name = item["orig_name"]
             
-        frame_idx, resp_uuid = parse_video_filename(base_name)
-        if not resp_uuid or frame_idx is None:
-            print(f"Skipping non-conforming video: {base_name}")
-            continue
-            
-        order = test_orders.get(resp_uuid)
-        if not order or len(order) < 2:
-            print(f"Warning: No test order found in JSON for response UUID {resp_uuid}. Setting condition to 'unknown'.")
-            condition = "unknown"
-        else:
-            if frame_idx == 9:
-                condition = order[0]
-            elif frame_idx == 13:
-                condition = order[1]
-            else:
-                condition = f"frame_{frame_idx}"
+            frame_idx, resp_uuid = parse_video_filename(orig_name)
+            if not resp_uuid or frame_idx is None:
+                print(f"Skipping non-conforming video: {orig_name}")
+                continue
                 
-        output_txt = run_icatcher(video)
-        if output_txt:
-            left_frames, right_frames, away_frames = analyze_gaze(output_txt)
-        else:
-            left_frames, right_frames, away_frames = 0, 0, 0
-            
-        results.append({
-            "Response UUID": resp_uuid,
-            "Frame Index": frame_idx,
-            "Condition": condition,
-            "Left Looking Frames": left_frames,
-            "Right Looking Frames": right_frames,
-            "Away/Other Frames": away_frames,
-            "Video Filename": base_name
-        })
+            order = test_orders.get(resp_uuid)
+            if not order or len(order) < 2:
+                print(f"Warning: No test order found in JSON for response UUID {resp_uuid}. Setting condition to 'unknown'.")
+                condition = "unknown"
+            else:
+                if frame_idx == 9:
+                    condition = order[0]
+                elif frame_idx == 13:
+                    condition = order[1]
+                else:
+                    condition = f"frame_{frame_idx}"
+                    
+            output_txt = run_icatcher(video_path)
+            if output_txt:
+                left_frames, right_frames, away_frames = analyze_gaze(output_txt)
+            else:
+                left_frames, right_frames, away_frames = 0, 0, 0
+                
+            results.append({
+                "Response UUID": resp_uuid,
+                "Frame Index": frame_idx,
+                "Condition": condition,
+                "Left Looking Frames": left_frames,
+                "Right Looking Frames": right_frames,
+                "Away/Other Frames": away_frames,
+                "Video Filename": orig_name
+            })
+    finally:
+        # Cleanup temp MP4 folder if it exists
+        if os.path.exists(temp_dir):
+            import shutil
+            shutil.rmtree(temp_dir)
+            print("Cleaned up temporary MP4 files.")
         
     if not results:
         print("No matching video files were processed.")
