@@ -4,39 +4,38 @@ import glob
 import re
 import json
 import subprocess
+import shutil
+import concurrent.futures
 import pandas as pd
 
 def run_icatcher(video_path, output_dir="icatcher_output"):
     """
     Runs iCatcher+ on a given video file.
-    Assumes icatcher is installed in the current python environment
-    (e.g., via `pip install git+https://github.com/icatcherplus/icatcher_plus.git`)
+    Assumes icatcher is installed in the current python environment.
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         
-    print(f"Running iCatcher+ on {video_path}...")
+    print(f"Running iCatcher+ on {os.path.basename(video_path)}...")
     
-    # Standard iCatcher+ CLI command
+    # Standard iCatcher+ CLI command with opencv_dnn detector for speed
     cmd = [
         "icatcher", 
         video_path, 
         "--output_annotation", output_dir,
         "--overwrite",
         "--gpu_id", "-1",
-        "--fd_parallel_processing",
-        "--fd_num_cpus", "-1",
-        "--fd_skip_frames", "3"
+        "--fd_model", "opencv_dnn"
     ]
     
     try:
-        subprocess.run(cmd, check=True)
-        print("iCatcher+ processing complete.")
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        print(f"iCatcher+ complete: {os.path.basename(video_path)}")
     except subprocess.CalledProcessError as e:
-        print(f"Error running iCatcher on {video_path}: {e}")
+        print(f"Error running iCatcher on {os.path.basename(video_path)}: {e}")
         return None
         
-    # The output file is usually named <video_filename>.txt or .csv inside the output_dir
+    # The output file is usually named <video_filename>.txt inside the output_dir
     base_name = os.path.splitext(os.path.basename(video_path))[0]
     expected_output_txt = os.path.join(output_dir, f"{base_name}.txt")
     
@@ -69,18 +68,14 @@ def analyze_gaze(icatcher_output_file, freeze_duration=20.0, anim_duration=18.76
         print(f"Failed to read {icatcher_output_file}: {e}")
         return 0, 0, 0
 
-    # Calculate how many frames represent the last 20 seconds.
-    # The total video is bullseye_duration + anim_duration + freeze_duration (3 + 18.76 + 20 = 41.76 sec).
-    # We only want the frames from the freeze_duration part.
-    total_duration = bullseye_duration + anim_duration + freeze_duration
-    fraction_to_keep = freeze_duration / total_duration
-    
-    total_frames = len(pred_series)
-    frames_to_keep = int(total_frames * fraction_to_keep)
-    
-    # Slice the series to only include the last 'frames_to_keep'
-    if frames_to_keep > 0:
-        pred_series = pred_series.tail(frames_to_keep)
+    # If the video has already been cropped to the last 20 seconds (approx 600 frames),
+    # we don't need to slice it.
+    if len(pred_series) > 650:
+        total_duration = bullseye_duration + anim_duration + freeze_duration
+        fraction_to_keep = freeze_duration / total_duration
+        frames_to_keep = int(len(pred_series) * fraction_to_keep)
+        if frames_to_keep > 0:
+            pred_series = pred_series.tail(frames_to_keep)
     
     left_frames = (pred_series == 'left').sum()
     right_frames = (pred_series == 'right').sum()
@@ -129,6 +124,7 @@ def prepare_videos(videos_dir):
     """
     Finds all non-consent webm and mp4 videos.
     Converts webm videos to mp4 without audio if needed.
+    Crops the converted mp4 to only include the last 20 seconds (starts at 21.76s).
     Returns list of dicts: {'orig_name': ..., 'path': ..., 'is_temp': ...}
     """
     temp_dir = os.path.join(videos_dir, "temp_mp4")
@@ -144,17 +140,17 @@ def prepare_videos(videos_dir):
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
             
-    # Process webms (convert to mp4)
+    # Process webms (convert to mp4 and crop to last 20 seconds starting at 21.76s)
     for webm in webms_to_convert:
         base_name = os.path.basename(webm)
         mp4_name = os.path.splitext(base_name)[0] + ".mp4"
         mp4_path = os.path.join(temp_dir, mp4_name)
         
-        # Convert webm to mp4 using ffmpeg
+        # Convert webm to mp4 using ffmpeg with slicing
         if not os.path.exists(mp4_path):
-            print(f"Converting {base_name} to MP4 format for compatibility...")
+            print(f"Converting and cropping {base_name}...")
             cmd = [
-                "ffmpeg", "-y", "-i", webm,
+                "ffmpeg", "-y", "-ss", "21.76", "-i", webm,
                 "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
                 mp4_path
             ]
@@ -185,6 +181,46 @@ def prepare_videos(videos_dir):
         
     return prepared, temp_dir
 
+def process_single_video(item, test_orders):
+    """
+    Processes a single video: parses condition, runs icatcher, and extracts gaze totals.
+    """
+    video_path = item["path"]
+    orig_name = item["orig_name"]
+    
+    frame_idx, resp_uuid = parse_video_filename(orig_name)
+    if not resp_uuid or frame_idx is None:
+        print(f"Skipping non-conforming video: {orig_name}")
+        return None
+        
+    order = test_orders.get(resp_uuid)
+    if not order or len(order) < 2:
+        print(f"Warning: No test order found in JSON for response UUID {resp_uuid}. Setting condition to 'unknown'.")
+        condition = "unknown"
+    else:
+        if frame_idx == 9:
+            condition = order[0]
+        elif frame_idx == 13:
+            condition = order[1]
+        else:
+            condition = f"frame_{frame_idx}"
+            
+    output_txt = run_icatcher(video_path)
+    if output_txt:
+        left_frames, right_frames, away_frames = analyze_gaze(output_txt)
+    else:
+        left_frames, right_frames, away_frames = 0, 0, 0
+        
+    return {
+        "Response UUID": resp_uuid,
+        "Frame Index": frame_idx,
+        "Condition": condition,
+        "Left Looking Frames": left_frames,
+        "Right Looking Frames": right_frames,
+        "Away/Other Frames": away_frames,
+        "Video Filename": orig_name
+    }
+
 def main():
     if len(sys.argv) < 3:
         print("Usage: python process_icatcher.py <path_to_videos_directory> <path_to_response_json>")
@@ -205,53 +241,29 @@ def main():
     test_orders = load_test_orders(json_path)
     print(f"Loaded trial configurations for {len(test_orders)} responses from JSON.")
     
-    # Prepare videos (converts webm to mp4 if needed)
+    # Prepare videos (converts and crops webm to mp4 if needed)
     prepared, temp_dir = prepare_videos(videos_dir)
     print(f"Found {len(prepared)} experimental trial videos to process.")
     
     results = []
     
+    # Process videos in parallel
+    max_workers = max(1, (os.cpu_count() or 4) - 2)
+    print(f"Starting processing with {max_workers} parallel workers...")
+    
     try:
-        for item in prepared:
-            video_path = item["path"]
-            orig_name = item["orig_name"]
-            
-            frame_idx, resp_uuid = parse_video_filename(orig_name)
-            if not resp_uuid or frame_idx is None:
-                print(f"Skipping non-conforming video: {orig_name}")
-                continue
-                
-            order = test_orders.get(resp_uuid)
-            if not order or len(order) < 2:
-                print(f"Warning: No test order found in JSON for response UUID {resp_uuid}. Setting condition to 'unknown'.")
-                condition = "unknown"
-            else:
-                if frame_idx == 9:
-                    condition = order[0]
-                elif frame_idx == 13:
-                    condition = order[1]
-                else:
-                    condition = f"frame_{frame_idx}"
-                    
-            output_txt = run_icatcher(video_path)
-            if output_txt:
-                left_frames, right_frames, away_frames = analyze_gaze(output_txt)
-            else:
-                left_frames, right_frames, away_frames = 0, 0, 0
-                
-            results.append({
-                "Response UUID": resp_uuid,
-                "Frame Index": frame_idx,
-                "Condition": condition,
-                "Left Looking Frames": left_frames,
-                "Right Looking Frames": right_frames,
-                "Away/Other Frames": away_frames,
-                "Video Filename": orig_name
-            })
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(process_single_video, item, test_orders): item 
+                for item in prepared
+            }
+            for future in concurrent.futures.as_completed(futures):
+                res = future.result()
+                if res:
+                    results.append(res)
     finally:
         # Cleanup temp MP4 folder if it exists
         if os.path.exists(temp_dir):
-            import shutil
             shutil.rmtree(temp_dir)
             print("Cleaned up temporary MP4 files.")
         
