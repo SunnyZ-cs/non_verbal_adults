@@ -28,8 +28,16 @@ def run_icatcher(video_path, output_dir="icatcher_output"):
         "--fd_model", "opencv_dnn"
     ]
     
+    env = os.environ.copy()
+    env["OMP_NUM_THREADS"] = "1"
+    env["MKL_NUM_THREADS"] = "1"
+    env["OPENBLAS_NUM_THREADS"] = "1"
+    env["VECLIB_MAXIMUM_THREADS"] = "1"
+    env["NUMEXPR_NUM_THREADS"] = "1"
+    env["TORCH_NUM_THREADS"] = "1"
+    
     try:
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        subprocess.run(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
         print(f"iCatcher+ complete: {os.path.basename(video_path)}")
     except subprocess.CalledProcessError as e:
         print(f"Error running iCatcher on {os.path.basename(video_path)}: {e}")
