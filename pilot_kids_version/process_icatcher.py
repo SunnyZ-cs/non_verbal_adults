@@ -213,7 +213,15 @@ def process_single_video(item, test_orders):
         else:
             condition = f"frame_{frame_idx}"
             
-    output_txt = run_icatcher(video_path)
+    base_name = os.path.splitext(os.path.basename(video_path))[0]
+    expected_output_txt = os.path.join("icatcher_output", f"{base_name}.txt")
+    
+    if os.path.exists(expected_output_txt) and os.path.getsize(expected_output_txt) > 0:
+        print(f"Gaze prediction file already exists for {orig_name}, skipping execution.")
+        output_txt = expected_output_txt
+    else:
+        output_txt = run_icatcher(video_path)
+        
     if output_txt:
         left_frames, right_frames, away_frames = analyze_gaze(output_txt)
     else:
@@ -256,7 +264,7 @@ def main():
     results = []
     
     # Process videos in parallel
-    max_workers = max(1, (os.cpu_count() or 4) - 2)
+    max_workers = 3
     print(f"Starting processing with {max_workers} parallel workers...")
     
     try:
