@@ -93,10 +93,10 @@ def analyze_gaze(icatcher_output_file, freeze_duration=20.0, anim_duration=18.76
 
 def load_test_orders(json_path):
     """
-    Loads test orders from the Lookit response JSON.
-    Returns a dictionary: response_uuid -> test_order_list
+    Loads test orders and child ages from the Lookit response JSON.
+    Returns a dictionary: response_uuid -> {'test_order': ..., 'age_days': ..., 'age_years': ...}
     """
-    test_orders = {}
+    metadata = {}
     try:
         with open(json_path, encoding='utf-8') as f:
             data = json.load(f)
@@ -105,14 +105,31 @@ def load_test_orders(json_path):
             uuid = resp.get('uuid')
             if not uuid:
                 continue
+                
+            child = item.get('child', {})
+            age_rounded = child.get('age_rounded')
+            try:
+                age_days = int(age_rounded) if age_rounded else None
+                age_years = round(float(age_rounded) / 365.25, 2) if age_rounded else None
+            except ValueError:
+                age_days = None
+                age_years = None
+                
+            test_order = None
             exp_data = item.get('exp_data', [])
             for trial in exp_data:
                 if 'test_order' in trial:
-                    test_orders[uuid] = trial['test_order']
+                    test_order = trial['test_order']
                     break
+                    
+            metadata[uuid] = {
+                'test_order': test_order,
+                'age_days': age_days,
+                'age_years': age_years
+            }
     except Exception as e:
         print(f"Error loading JSON data from {json_path}: {e}")
-    return test_orders
+    return metadata
 
 def parse_video_filename(filename):
     """
@@ -201,7 +218,11 @@ def process_single_video(item, test_orders):
         print(f"Skipping non-conforming video: {orig_name}")
         return None
         
-    order = test_orders.get(resp_uuid)
+    meta = test_orders.get(resp_uuid, {})
+    order = meta.get('test_order')
+    age_days = meta.get('age_days')
+    age_years = meta.get('age_years')
+    
     if not order or len(order) < 2:
         print(f"Warning: No test order found in JSON for response UUID {resp_uuid}. Setting condition to 'unknown'.")
         condition = "unknown"
@@ -229,6 +250,8 @@ def process_single_video(item, test_orders):
         
     return {
         "Response UUID": resp_uuid,
+        "Age (Days)": age_days,
+        "Age (Years)": age_years,
         "Frame Index": frame_idx,
         "Condition": condition,
         "Left Looking Frames": left_frames,
