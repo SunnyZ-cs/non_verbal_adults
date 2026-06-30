@@ -5,6 +5,7 @@ import json
 import base64
 import subprocess
 import shutil
+import argparse
 import pandas as pd
 import numpy as np
 import cv2
@@ -15,11 +16,12 @@ except ImportError:
     print("Error: MediaPipe is not installed. Please run: pip install mediapipe")
     sys.exit(1)
 
-def run_mediapipe_gaze(video_path, output_txt_path, threshold_right=0.42, threshold_left=0.53):
+def run_mediapipe_gaze(video_path, output_txt_path, sensitivity_offset=0.020):
     """
     Executes gaze tracking using MediaPipe Face Mesh iris landmarks on a video clip.
     Saves frame-by-frame annotations to output_txt_path.
     """
+    # 1. First pass to calculate baseline mean_ratio for this specific clip
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"  Error: Could not open video file '{video_path}'")
@@ -33,46 +35,56 @@ def run_mediapipe_gaze(video_path, output_txt_path, threshold_right=0.42, thresh
         min_tracking_confidence=0.5
     )
     
+    ratios = []
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = face_mesh.process(rgb_frame)
+        if results.multi_face_landmarks:
+            landmarks = results.multi_face_landmarks[0].landmark
+            ratio_right = (landmarks[468].x - landmarks[33].x) / (landmarks[133].x - landmarks[33].x)
+            ratio_left = (landmarks[473].x - landmarks[362].x) / (landmarks[263].x - landmarks[362].x)
+            avg_ratio = (ratio_right + ratio_left) / 2.0
+            ratios.append(avg_ratio)
+    cap.release()
+    
+    if not ratios:
+        print(f"  Warning: No faces detected in '{video_path}'")
+        face_mesh.close()
+        return 0, 0, 0, 300
+        
+    mean_ratio = np.mean(ratios)
+    print(f"  Baseline calibrated: mean_ratio = {mean_ratio:.4f}, sensitivity_offset = {sensitivity_offset:.4f}")
+    
+    # 2. Second pass to annotate and count
+    cap = cv2.VideoCapture(video_path)
     frame_idx = 0
     left_count = 0
     right_count = 0
     center_count = 0
     noface_count = 0
-    
     out_lines = []
     
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
-            
         frame_idx += 1
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = face_mesh.process(rgb_frame)
-        
         if results.multi_face_landmarks:
             landmarks = results.multi_face_landmarks[0].landmark
-            
-            # Right eye coordinates: outer 33, inner 133, iris center 468
-            r_outer = landmarks[33]
-            r_inner = landmarks[133]
-            r_iris = landmarks[468]
-            
-            # Left eye coordinates: inner 362, outer 263, iris center 473
-            l_inner = landmarks[362]
-            l_outer = landmarks[263]
-            l_iris = landmarks[473]
-            
-            # Compute horizontal gaze ratios (0.0 = extreme right, 1.0 = extreme left)
-            ratio_right = (r_iris.x - r_outer.x) / (r_inner.x - r_outer.x)
-            ratio_left = (l_iris.x - l_inner.x) / (l_outer.x - l_inner.x)
+            ratio_right = (landmarks[468].x - landmarks[33].x) / (landmarks[133].x - landmarks[33].x)
+            ratio_left = (landmarks[473].x - landmarks[362].x) / (landmarks[263].x - landmarks[362].x)
             avg_ratio = (ratio_right + ratio_left) / 2.0
             
-            # Classify based on thresholds
-            if avg_ratio < threshold_right:
+            # Classify gaze relative to the participant's dynamic mean
+            if avg_ratio < mean_ratio - sensitivity_offset:
                 gaze = "right"
                 right_count += 1
-            elif avg_ratio > threshold_left:
+            elif avg_ratio > mean_ratio + sensitivity_offset:
                 gaze = "left"
                 left_count += 1
             else:
@@ -94,12 +106,16 @@ def run_mediapipe_gaze(video_path, output_txt_path, threshold_right=0.42, thresh
     return left_count, right_count, center_count, noface_count
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python3 process_videos_mediapipe.py <proliferate_responses.json> [output_dir]")
-        sys.exit(1)
-
-    input_path = sys.argv[1]
-    output_dir = sys.argv[2] if len(sys.argv) > 2 else "mediapipe_output"
+    parser = argparse.ArgumentParser(description="MediaPipe Adult Gaze Estimation (Dynamic Calibration)")
+    parser.add_argument("responses_json", help="Path to Proliferate response JSON file")
+    parser.add_argument("output_dir", nargs="?", default="mediapipe_output", help="Output folder")
+    parser.add_argument("-s", "--sensitivity", type=float, default=0.020, help="Gaze sensitivity offset (default: 0.020)")
+    
+    args = parser.parse_args()
+    
+    input_path = args.responses_json
+    output_dir = args.output_dir
+    sensitivity_offset = args.sensitivity
 
     if not os.path.exists(input_path):
         print(f"Error: Input file '{input_path}' not found.")
@@ -189,8 +205,8 @@ def main():
                     
             output_txt = os.path.join(output_dir, f"videoStream_adult_{pid}_{trial_idx}_{condition}.txt")
             
-            # Execute MediaPipe gaze estimation
-            left, right, center, noface = run_mediapipe_gaze(mp4_path, output_txt)
+            # Execute MediaPipe gaze estimation with sensitivity offset
+            left, right, center, noface = run_mediapipe_gaze(mp4_path, output_txt, sensitivity_offset)
             total = left + right + center
             
             left_pct = (left / total * 100) if total > 0 else 0
