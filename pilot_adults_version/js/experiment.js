@@ -149,7 +149,7 @@ timeline.push({
     stimulus: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center; line-height: 1.6;">
             <h3>Introduction</h3>
-            <p>You will now watch a clip introducing the characters. Please look at the screen and watch them carefully.</p>
+            <p>You will now watch a clip where some shapes interact. Please look at the screen and watch them carefully.</p>
         </div>
     `,
     choices: ['Start ▶']

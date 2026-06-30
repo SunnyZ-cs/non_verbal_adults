@@ -2,8 +2,8 @@ const time = '10 minutes';
 
 const consent = {
     type: jsPsychHtmlButtonResponse,
-    stimulus: '<p><b>Consent Form</b></p> <div style="text-align:left;' +
-        'background-color:lightblue; padding:20px; max-width:900px; font-family: Arial, sans-serif; font-size: 14px;">' +
+    stimulus: '<p style="text-align: center;"><b>Consent Form</b></p> <div style="text-align:left;' +
+        'background-color:lightblue; padding:20px; max-width:900px; margin: 0 auto; font-family: Arial, sans-serif; font-size: 14px;">' +
         '<p><b>Description:</b> Welcome! You are invited to participate' +
         ' in a research study in cognitive psychology. You will be asked' +
         ' to perform various tasks on a computer which may include:' +
