@@ -110,16 +110,33 @@ def main():
     parser.add_argument("responses_json", help="Path to Proliferate response JSON file")
     parser.add_argument("output_dir", nargs="?", default="mediapipe_output", help="Output folder")
     parser.add_argument("-s", "--sensitivity", type=float, default=0.012, help="Gaze sensitivity offset (default: 0.012)")
+    parser.add_argument("-t", "--test-order-csv", help="Path to Proliferate test order CSV file")
     
     args = parser.parse_args()
     
     input_path = args.responses_json
     output_dir = args.output_dir
     sensitivity_offset = args.sensitivity
+    test_order_csv = args.test_order_csv
 
     if not os.path.exists(input_path):
         print(f"Error: Input file '{input_path}' not found.")
         sys.exit(1)
+
+    # Load test order map if provided
+    test_order_map = {}
+    if test_order_csv:
+        if os.path.exists(test_order_csv):
+            try:
+                to_df = pd.read_csv(test_order_csv)
+                # Group by workerid and convert test_order column values to list
+                for pid, group in to_df.groupby('workerid'):
+                    test_order_map[str(pid)] = [str(x).strip() for x in group['test_order'].tolist() if pd.notna(x)]
+                print(f"Loaded test orders for {len(test_order_map)} participant(s) from '{test_order_csv}'.")
+            except Exception as e:
+                print(f"Error reading test order CSV: {e}")
+        else:
+            print(f"Warning: Test order CSV '{test_order_csv}' not found.")
 
     # Load response data
     responses = []
@@ -130,19 +147,25 @@ def main():
             grouped = df.groupby('workerid')
             for pid, group in grouped:
                 videos = []
-                test_order = []
+                pid_str = str(pid)
+                # Retrieve test order from test_order_map or default to the CSV columns
+                if pid_str in test_order_map:
+                    test_order = test_order_map[pid_str]
+                else:
+                    test_order = []
+                    for _, row in group.iterrows():
+                        cond = row.get('proliferate.condition', 'unknown')
+                        test_order.append(str(cond))
+                
                 for _, row in group.iterrows():
                     videos.append({
                         'trial_idx': int(row['trial_idx']),
                         'mime_type': row.get('mime_type', 'video/webm'),
                         'base64': row['base64']
                     })
-                    # If proliferate.condition is present, use it; otherwise default to trial index condition
-                    cond = row.get('proliferate.condition', 'unknown')
-                    test_order.append(str(cond))
                 
                 responses.append({
-                    'participant_id': str(pid),
+                    'participant_id': pid_str,
                     'test_order': test_order,
                     'videos': videos
                 })
@@ -162,6 +185,16 @@ def main():
                     for line in content.split('\n'):
                         if line.strip():
                             responses.append(json.loads(line))
+            
+            # Override test order from map if provided
+            if test_order_map:
+                for resp in responses:
+                    pid = resp.get("participant_id")
+                    if not pid:
+                        pid = resp.get("results", {}).get("participant_id")
+                    if pid and str(pid) in test_order_map:
+                        resp["test_order"] = test_order_map[str(pid)]
+                        
             print(f"Loaded {len(responses)} response(s) from JSON '{input_path}'.")
         except Exception as e:
             print(f"Error loading response JSON payload: {e}")
@@ -244,7 +277,7 @@ def main():
             summary_results.append({
                 "ParticipantID": pid,
                 "TrialIndex": trial_idx,
-                "Condition": condition,
+                "TrialType": condition,
                 "Left Looking Frames": left,
                 "Right Looking Frames": right,
                 "Center Looking Frames": center,
