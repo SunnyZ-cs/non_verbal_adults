@@ -55,11 +55,8 @@ const webcam_setup = {
 
 // Trial to start MediaRecorder
 const start_recording = {
-    type: jsPsychHtmlKeyboardResponse,
-    stimulus: '',
-    choices: "NO_KEYS",
-    trial_duration: 0,
-    on_finish: function() {
+    type: jsPsychCallFunction,
+    func: function() {
         if (!webcamStream) {
             console.warn("No active webcam stream. Recording skipped.");
             return;
@@ -92,18 +89,25 @@ const start_recording = {
 
 // Trial to stop MediaRecorder and save the video as a Base64 string in jsPsych data
 const stop_recording = {
-    type: jsPsychHtmlKeyboardResponse,
-    stimulus: '',
-    choices: "NO_KEYS",
-    on_start: function() {
+    type: jsPsychCallFunction,
+    async: true,
+    func: function(done) {
         if (!mediaRecorder || mediaRecorder.state === "inactive") {
             console.warn("MediaRecorder is not active.");
-            jsPsych.finishTrial();
+            done();
             return;
         }
         
-        // Block auto-finishing this trial until recording file is fully saved
-        jsPsych.pluginAPI.cancelAllKeyboardResponses();
+        let finished = false;
+        
+        // Safety fallback timeout to prevent experiment from freezing if onstop hangs
+        const timeoutId = setTimeout(function() {
+            if (!finished) {
+                finished = true;
+                console.warn("Safety timeout reached while saving video. Advancing trial.");
+                done();
+            }
+        }, 10000);
         
         mediaRecorder.onstop = function() {
             const mimeType = mediaRecorder.mimeType || 'video/webm';
@@ -112,23 +116,27 @@ const stop_recording = {
             const reader = new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend = function() {
-                const base64Data = reader.result; // Data URL format (base64)
-                
-                // Write base64 video stream data to jsPsych data store
-                jsPsych.data.write({
-                    page_type: 'webcam_video',
-                    trial_idx: videoIndex,
-                    video_base64: base64Data,
-                    mime_type: mimeType
-                });
-                
-                console.log(`Video ${videoIndex} successfully recorded and saved (${blob.size} bytes).`);
-                videoIndex++;
-                jsPsych.finishTrial();
+                if (!finished) {
+                    finished = true;
+                    clearTimeout(timeoutId);
+                    
+                    const base64Data = reader.result; // Data URL format (base64)
+                    
+                    // Write base64 video stream data to jsPsych data store
+                    jsPsych.data.write({
+                        page_type: 'webcam_video',
+                        trial_idx: videoIndex,
+                        video_base64: base64Data,
+                        mime_type: mimeType
+                    });
+                    
+                    console.log(`Video ${videoIndex} successfully recorded and saved (${blob.size} bytes).`);
+                    videoIndex++;
+                    done();
+                }
             };
         };
         
         mediaRecorder.stop();
-    },
-    trial_duration: 15000 // Give plenty of time to stop/save video
+    }
 };

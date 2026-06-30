@@ -191,14 +191,44 @@ timeline.push({
 });
 
 // Build Test Timeline for a specific condition
-function buildTestTimeline(test_name) {
+function buildTestTimeline(test_name, trial_idx) {
     const trials = [];
     
     const anim_url = test_name === 'distal' ? distal_anim : proximal_anim;
     const freeze_url = test_name === 'distal' ? distal_freeze : proximal_freeze;
     
     // 1. Start webcam recording
-    trials.push(start_recording);
+    trials.push({
+        type: jsPsychCallFunction,
+        func: function() {
+            if (!webcamStream) {
+                console.warn("No active webcam stream. Recording skipped.");
+                return;
+            }
+            recordedChunks = [];
+            
+            let options = { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 250000 };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/webm' };
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/mp4' };
+            }
+            
+            try {
+                mediaRecorder = new MediaRecorder(webcamStream, options);
+                mediaRecorder.ondataavailable = function(event) {
+                    if (event.data && event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                mediaRecorder.start(1000); // Record chunks of 1 second
+                console.log("Webcam recording started for trial " + trial_idx);
+            } catch (e) {
+                console.error("Could not start MediaRecorder:", e);
+            }
+        }
+    });
 
     // 2. Refixation bullseye (3 seconds)
     trials.push({
@@ -251,13 +281,64 @@ function buildTestTimeline(test_name) {
     });
     
     // 4. Stop webcam recording and save Base64 file
-    trials.push(stop_recording);
+    trials.push({
+        type: jsPsychCallFunction,
+        async: true,
+        func: function(done) {
+            console.log("stop_recording called for trial " + trial_idx + ", type of done is: " + typeof done);
+            if (!mediaRecorder || mediaRecorder.state === "inactive") {
+                console.warn("MediaRecorder is not active.");
+                done();
+                return;
+            }
+            
+            let finished = false;
+            
+            // Safety fallback timeout to prevent experiment from freezing if onstop hangs
+            const timeoutId = setTimeout(function() {
+                if (!finished) {
+                    finished = true;
+                    console.warn("Safety timeout reached while saving video. Advancing trial.");
+                    done();
+                }
+            }, 10000);
+            
+            mediaRecorder.onstop = function() {
+                const mimeType = mediaRecorder.mimeType || 'video/webm';
+                const blob = new Blob(recordedChunks, { type: mimeType });
+                
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = function() {
+                    if (!finished) {
+                        finished = true;
+                        clearTimeout(timeoutId);
+                        
+                        const base64Data = reader.result; // Data URL format (base64)
+                        
+                        // Write base64 video stream data to jsPsych data store
+                        jsPsych.data.write({
+                            page_type: 'webcam_video',
+                            trial_idx: trial_idx,
+                            video_base64: base64Data,
+                            mime_type: mimeType
+                        });
+                        
+                        console.log(`Video ${trial_idx} successfully recorded and saved (${blob.size} bytes).`);
+                        done();
+                    }
+                };
+            };
+            
+            mediaRecorder.stop();
+        }
+    });
 
     return trials;
 }
 
 // Add Test Trial 1
-timeline.push(...buildTestTimeline(test_order[0]));
+timeline.push(...buildTestTimeline(test_order[0], 1));
 
 // Brief transition between test trials
 timeline.push({
@@ -268,11 +349,14 @@ timeline.push({
             <p>Click the button below when you are ready to continue to the second clip.</p>
         </div>
     `,
-    choices: ['Ready ▶']
+    choices: ['Ready ▶'],
+    on_finish: function() {
+        console.log("Ready button trial finished successfully!");
+    }
 });
 
 // Add Test Trial 2
-timeline.push(...buildTestTimeline(test_order[1]));
+timeline.push(...buildTestTimeline(test_order[1], 2));
 
 // Exit Fullscreen
 timeline.push({

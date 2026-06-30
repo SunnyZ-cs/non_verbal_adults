@@ -3,7 +3,7 @@ const demographic_form = {
     data: {
         "page_type": "participant_survey",
     },
-    html: '<div style="max-width:700px; text-align:center; font-family: Arial, sans-serif;"> <p>' +
+    html: '<div style="max-width:700px; text-align:center; margin: 0 auto; font-family: Arial, sans-serif;"> <p>' +
         'Please provide the following information to complete the study.' +
         ' </p> <div style="text-align:center; margin-top: 30px; margin-bottom: 30px;"> ' +
         '<div style="text-align:left; display:inline-block; margin-right:20px; line-height:2.2em; font-weight: bold;"> <ol>' +
