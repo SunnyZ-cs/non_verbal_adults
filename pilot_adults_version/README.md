@@ -17,33 +17,48 @@ This folder contains the standalone **jsPsych (v7.3.1)** experiment pipeline for
 6.  **Demographics**: Final questionnaire gathering age, gender, race, and ethnicity.
 7.  **Submission**: Sends all response data and the Base64-encoded webcam video files directly to Proliferate (`proliferate.submit`).
 
----
+## Data Collection & Gaze Analysis Workflow
 
-## Data Collection & Extraction Workflow
+Because Proliferate is a static-file hosting platform, it does not support native video uploads. Instead, this pipeline packages compressed webcam recordings inside the participant's submission payload. 
 
-Because Proliferate is a static-file hosting platform, it does not support native video uploads. Instead, this pipeline packages the webcam recordings directly inside the JSON response payload. 
+Once your study is complete, follow these steps to extract and analyze the gaze data using **MediaPipe Face Mesh Iris Tracking**:
 
-Once your study is complete, follow these steps to extract the video files for analysis:
+### Step 1: Download Results from Proliferate
+Download the following CSV files from the Proliferate dashboard:
+1.  **Videos CSV**: e.g., `looking_time_test_run_with_5-videos.csv` (contains the Base64 video streams).
+2.  **Test Order CSV**: e.g., `looking_time_test_run_with_5-test_order.csv` (contains the condition sequence mapping).
 
-### Step 1: Download Responses
-Download your experiment results from Proliferate (as a JSON file, e.g., `results.json`).
-
-### Step 2: Extract the Video Files
-Run the included python script to decode the Base64 streams back into standard `.webm` (or `.mp4`) files:
-
-```bash
-python3 extract_videos.py results.json
-```
-
-By default, this will create a directory called `videos_extracted/` containing files named in the following format:
-`videoStream_adult_[ParticipantID]_[TrialIndex]_[Condition].webm`
-
-*Example:* `videoStream_adult_P171569_1_distal.webm`
-
-### Step 3: Run Gaze Tracking (iCatcher)
-You can then run the extracted videos folder directly through your `iCatcher` processing pipeline:
+### Step 2: Run Gaze Analysis Pipeline
+Run the included python pipeline script `process_videos_mediapipe.py`. This script automatically decodes the Base64 streams, crops the videos using `ffmpeg` to target the last 20 seconds (the freeze-frame phase), runs high-precision iris tracking, and maps the conditions to `proximal` or `distal` trial types:
 
 ```bash
-python3 pilot_kids_version/process_icatcher.py
+python3 process_videos_mediapipe.py <path_to_videos_csv> -t <path_to_test_order_csv> [output_directory]
 ```
-This naming schema ensures that the extraction is fully compatible with the existing gaze processing utilities.
+
+*Example:*
+```bash
+python3 process_videos_mediapipe.py looking_time_test_run_with_5-videos.csv -t looking_time_test_run_with_5-test_order.csv mediapipe_output
+```
+
+### Output Files
+
+1.  **Summary CSV (`mediapipe_summary_results.csv`)**: 
+    A table compiling the gaze statistics for all participants.
+    *   `ParticipantID`: Prolific/Proliferate worker ID.
+    *   `TrialIndex`: Sequence index (`1` or `2`).
+    *   `TrialType`: Evaluated condition (`proximal` or `distal`).
+    *   `Left Looking Frames` / `Right Looking Frames` / `Center Looking Frames`: Frame counts for each gaze direction.
+    *   `Left Looking %` / `Right Looking %`: Percentage of valid gaze frames spent looking left vs. right.
+    
+2.  **Detailed Annotation Files (`mediapipe_output/`)**:
+    Contains frame-by-frame gaze classifications and raw horizontal iris ratios.
+    *   File naming format: `videoStream_adult_[ParticipantID]_[TrialIndex]_[TrialType].txt`
+    *   Inside: `[FrameNumber],[GazeDirection],[IrisRatio]`
+
+### Dependencies
+Before running the script, ensure you have the required packages:
+```bash
+pip install pandas numpy opencv-python mediapipe
+```
+And make sure `ffmpeg` is installed on your system.
+
