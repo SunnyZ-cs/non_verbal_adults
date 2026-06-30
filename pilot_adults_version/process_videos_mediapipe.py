@@ -123,22 +123,49 @@ def main():
 
     # Load response data
     responses = []
-    try:
-        with open(input_path, 'r', encoding='utf-8') as f:
-            content = f.read().strip()
-            if content.startswith('['):
-                responses = json.loads(content)
-            elif content.startswith('{'):
-                responses = [json.loads(content)]
-            else:
-                for line in content.split('\n'):
-                    if line.strip():
-                        responses.append(json.loads(line))
-    except Exception as e:
-        print(f"Error loading response payload: {e}")
-        sys.exit(1)
-
-    print(f"Loaded {len(responses)} response(s) from '{input_path}'.")
+    if input_path.lower().endswith('.csv'):
+        try:
+            df = pd.read_csv(input_path)
+            # Group by workerid to form responses structured similarly to the JSON
+            grouped = df.groupby('workerid')
+            for pid, group in grouped:
+                videos = []
+                test_order = []
+                for _, row in group.iterrows():
+                    videos.append({
+                        'trial_idx': int(row['trial_idx']),
+                        'mime_type': row.get('mime_type', 'video/webm'),
+                        'base64': row['base64']
+                    })
+                    # If proliferate.condition is present, use it; otherwise default to trial index condition
+                    cond = row.get('proliferate.condition', 'unknown')
+                    test_order.append(str(cond))
+                
+                responses.append({
+                    'participant_id': str(pid),
+                    'test_order': test_order,
+                    'videos': videos
+                })
+            print(f"Loaded {len(responses)} participant(s) from CSV '{input_path}'.")
+        except Exception as e:
+            print(f"Error loading response CSV: {e}")
+            sys.exit(1)
+    else:
+        try:
+            with open(input_path, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if content.startswith('['):
+                    responses = json.loads(content)
+                elif content.startswith('{'):
+                    responses = [json.loads(content)]
+                else:
+                    for line in content.split('\n'):
+                        if line.strip():
+                            responses.append(json.loads(line))
+            print(f"Loaded {len(responses)} response(s) from JSON '{input_path}'.")
+        except Exception as e:
+            print(f"Error loading response JSON payload: {e}")
+            sys.exit(1)
     
     os.makedirs(output_dir, exist_ok=True)
     temp_dir = "temp_mediapipe_processing"
