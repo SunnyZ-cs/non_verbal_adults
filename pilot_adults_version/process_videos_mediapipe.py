@@ -16,7 +16,7 @@ except ImportError:
     print("Error: MediaPipe is not installed. Please run: pip install mediapipe")
     sys.exit(1)
 
-def run_mediapipe_gaze(video_path, output_txt_path, sensitivity_offset=0.020):
+def run_mediapipe_gaze(video_path, output_txt_path, sensitivity_offset=0.012):
     """
     Executes gaze tracking using MediaPipe Face Mesh iris landmarks on a video clip.
     Saves frame-by-frame annotations to output_txt_path.
@@ -109,7 +109,7 @@ def main():
     parser = argparse.ArgumentParser(description="MediaPipe Adult Gaze Estimation (Dynamic Calibration)")
     parser.add_argument("responses_json", help="Path to Proliferate response JSON file")
     parser.add_argument("output_dir", nargs="?", default="mediapipe_output", help="Output folder")
-    parser.add_argument("-s", "--sensitivity", type=float, default=0.020, help="Gaze sensitivity offset (default: 0.020)")
+    parser.add_argument("-s", "--sensitivity", type=float, default=0.012, help="Gaze sensitivity offset (default: 0.012)")
     
     args = parser.parse_args()
     
