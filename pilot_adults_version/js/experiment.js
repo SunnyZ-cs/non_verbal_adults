@@ -148,11 +148,11 @@ timeline.push({
     type: jsPsychHtmlButtonResponse,
     stimulus: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center; line-height: 1.6;">
-            <h3>Familiarization Phase</h3>
+            <h3>Introduction</h3>
             <p>You will now watch a clip introducing the characters. Please look at the screen and watch them carefully.</p>
         </div>
     `,
-    choices: ['Start Familiarization ▶']
+    choices: ['Start ▶']
 });
 
 // Familiarization Animation Trial
@@ -181,13 +181,13 @@ timeline.push({
     type: jsPsychHtmlButtonResponse,
     stimulus: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center; line-height: 1.6;">
-            <h3>Familiarization Complete</h3>
+            <h3>First Part Complete</h3>
             <p>Great! You've finished the first part of the study.</p>
-            <p>Next, you will watch two test clips. Before each clip, a pulsing target will appear. Please look directly at the center of the target.</p>
-            <p><strong>Note:</strong> Webcam recording will run during the test clips to capture your gaze.</p>
+            <p>Next, you will watch two short clips. Before each clip, a pulsing target will appear. Please look directly at the center of the target.</p>
+            <p><strong>Note:</strong> Webcam recording will run during the clips to capture your gaze.</p>
         </div>
     `,
-    choices: ['Continue to Test Clips ▶']
+    choices: ['Continue ▶']
 });
 
 // Build Test Timeline for a specific condition
@@ -264,8 +264,8 @@ timeline.push({
     type: jsPsychHtmlButtonResponse,
     stimulus: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center; line-height: 1.6;">
-            <h3>First Test Clip Finished</h3>
-            <p>Click the button below when you are ready to continue to the second test clip.</p>
+            <h3>First Clip Finished</h3>
+            <p>Click the button below when you are ready to continue to the second clip.</p>
         </div>
     `,
     choices: ['Ready ▶']

@@ -9,6 +9,7 @@ const instructions = {
             <ul style="padding-left: 20px; margin-bottom: 25px;">
                 <li style="margin-bottom: 12px;"><strong>Webcam Gaze Tracking:</strong> Because we are studying how people direct their attention, this study uses your webcam to track where you look on the screen.</li>
                 <li style="margin-bottom: 12px;"><strong>Positioning:</strong> Please sit directly in front of the center of your screen, facing the camera. Try to remain still and look at the screen throughout the videos.</li>
+                <li style="margin-bottom: 12px;"><strong>How to look:</strong> You can look anywhere on the screen; there is no right or wrong way of looking. We are simply interested in your natural viewing behavior.</li>
                 <li style="margin-bottom: 12px;"><strong>Lighting:</strong> Ensure your face is clearly visible and well-lit. Avoid strong backlighting (like sitting directly in front of a bright window).</li>
                 <li style="margin-bottom: 12px;"><strong>Silent Clips:</strong> The animations you will watch do not contain any audio. Please watch them carefully anyway.</li>
                 <li style="margin-bottom: 12px;"><strong>Full Screen:</strong> The study will run in full-screen mode to ensure accurate measurements.</li>
