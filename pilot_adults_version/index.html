@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Visual Gaze study</title>
+
+    <!-- jsPsych v7.3.1 Core CSS and JS -->
+    <link href="https://unpkg.com/jspsych@7.3.1/css/jspsych.css" rel="stylesheet" type="text/css" />
+    <script src="https://unpkg.com/jspsych@7.3.1"></script>
+
+    <!-- Core jsPsych Plugins -->
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-preload@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.1.2"></script>
+
+    <!-- Proliferate & JQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://proliferate.alps.science/static/js/proliferate.js"></script>
+
+    <!-- Global Layout Styling -->
+    <style>
+        body {
+            background-color: white;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .jspsych-content-wrapper {
+            background-color: white;
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+        }
+
+        .jspsych-content {
+            max-width: 95% !important;
+            width: 900px !important;
+            margin: 0 auto !important;
+        }
+
+        /* Test & familiarization visual elements (GIFs/Images) */
+        .trial-visual {
+            display: block;
+            width: 100%;
+            max-width: 800px;
+            max-height: 70vh;
+            margin: 0 auto;
+            object-fit: contain;
+        }
+
+        .instructions-box {
+            max-width: 700px;
+            margin: 30px auto;
+            font-size: 1.1em;
+            line-height: 1.7;
+            text-align: left;
+        }
+
+        .instructions-box h2 {
+            margin-bottom: 15px;
+            color: #2C3E50;
+        }
+
+        .instructions-box ul {
+            padding-left: 1.5em;
+        }
+
+        .instructions-box li {
+            margin-bottom: 10px;
+        }
+
+        /* Re-style button layout */
+        .jspsych-btn {
+            font-size: 1.1em !important;
+            padding: 10px 30px !important;
+            cursor: pointer;
+            border-radius: 4px !important;
+            background-color: #2980B9 !important;
+            color: white !important;
+            border: none !important;
+            transition: background-color 0.2s !important;
+        }
+
+        .jspsych-btn:hover {
+            background-color: #3498DB !important;
+        }
+
+        .jspsych-btn:disabled {
+            background-color: #BDC3C7 !important;
+            cursor: not-allowed !important;
+        }
+    </style>
+
+    <!-- Custom Experiment Trials Configuration -->
+    <script src="js/consent.js"></script>
+    <script src="js/instructions.js"></script>
+    <script src="js/demographic_form.js"></script>
+    <script src="js/webcam_record.js"></script>
+</head>
+
+<body>
+    <!-- Experiment will render in body via jsPsych -->
+</body>
+
+<!-- Main Timeline Execution -->
+<script src="js/experiment.js"></script>
+
+</html>
