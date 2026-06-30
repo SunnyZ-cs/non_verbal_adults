@@ -31,9 +31,9 @@ const webcam_setup = {
 
         navigator.mediaDevices.getUserMedia({
             video: {
-                width: { ideal: 640 },
-                height: { ideal: 480 },
-                frameRate: { ideal: 30 }
+                width: { max: 640, ideal: 320 },
+                height: { max: 480, ideal: 240 },
+                frameRate: { max: 15, ideal: 15 }
             },
             audio: false
         })
@@ -64,13 +64,18 @@ const start_recording = {
         recordedChunks = [];
         
         // Select standard codec options (VP8 is highly compatible with iCatcher/FFmpeg)
-        let options = { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 250000 };
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-            options = { mimeType: 'video/webm' };
+        let mimeType = 'video/webm;codecs=vp8';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'video/webm';
         }
-        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-            options = { mimeType: 'video/mp4' };
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'video/mp4';
         }
+        
+        const options = { 
+            mimeType: mimeType, 
+            videoBitsPerSecond: 150000 // 150 Kbps targets ultra-low bandwidth suitable for web uploads
+        };
         
         try {
             mediaRecorder = new MediaRecorder(webcamStream, options);
