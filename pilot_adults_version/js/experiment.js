@@ -207,13 +207,18 @@ function buildTestTimeline(test_name, trial_idx) {
             }
             recordedChunks = [];
             
-            let options = { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 250000 };
-            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options = { mimeType: 'video/webm' };
+            let mimeType = 'video/webm;codecs=vp8';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'video/webm';
             }
-            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options = { mimeType: 'video/mp4' };
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'video/mp4';
             }
+            
+            const options = { 
+                mimeType: mimeType, 
+                videoBitsPerSecond: 150000 
+            };
             
             try {
                 mediaRecorder = new MediaRecorder(webcamStream, options);
