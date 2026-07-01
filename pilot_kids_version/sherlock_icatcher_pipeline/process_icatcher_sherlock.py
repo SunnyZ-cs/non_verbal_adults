@@ -187,13 +187,19 @@ def prepare_videos(videos_dir, target_uuid=None):
 
         if not os.path.exists(mp4_path):
             print(f"Converting and cropping {base_name}...")
+            # NOTE: libx264 is not available in Sherlock's system ffmpeg module
+            # (no --enable-gpl in that build), so we use ffmpeg's built-in
+            # mpeg4 encoder instead, which needs no external library.
             cmd = [
                 "ffmpeg", "-y", "-ss", "21.76", "-i", webm,
-                "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                "-an", "-c:v", "mpeg4", "-q:v", "3", "-pix_fmt", "yuv420p",
                 mp4_path,
             ]
             try:
-                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                if result.returncode != 0:
+                    print(f"Error converting {base_name} (exit {result.returncode}):\n{result.stdout[-2000:]}")
+                    continue
             except Exception as e:
                 print(f"Error converting {base_name}: {e}")
                 continue
@@ -211,7 +217,7 @@ def prepare_videos(videos_dir, target_uuid=None):
     return prepared, temp_dir
 
 
-def process_single_video(item, test_orders, output_dir, gpu_id):
+def process_single_video(item, test_orders, output_dir, gpu_id, durations=None):
     video_path = item["path"]
     orig_name = item["orig_name"]
 
@@ -246,7 +252,8 @@ def process_single_video(item, test_orders, output_dir, gpu_id):
         output_txt = run_icatcher(video_path, output_dir, gpu_id)
 
     if output_txt:
-        left_frames, right_frames, away_frames = analyze_gaze(output_txt)
+        durations = durations or {}
+        left_frames, right_frames, away_frames = analyze_gaze(output_txt, **durations)
     else:
         left_frames, right_frames, away_frames = 0, 0, 0
 
@@ -272,7 +279,16 @@ def main():
     parser.add_argument("--output_dir", default="icatcher_output", help="Where raw icatcher per-frame annotation files go (shared across participants is fine; filenames are unique).")
     parser.add_argument("--out", default=None, help="Path to write this run's summary CSV. Defaults to results/icatcher_summary_<uuid|all>.csv")
     parser.add_argument("--workers", default=1, type=int, help="Parallel video workers within this run (default 1; keep low on a single shared GPU).")
+    parser.add_argument("--freeze_duration", default=20.0, type=float, help="Seconds of the trial's final freeze-frame window that gaze is scored over (default 20.0, matches this study's design).")
+    parser.add_argument("--anim_duration", default=18.76, type=float, help="Seconds of animation preceding the freeze frame (default 18.76). Only affects how many trailing frames get kept when a video has more than 650 total frames - see analyze_gaze().")
+    parser.add_argument("--bullseye_duration", default=3.0, type=float, help="Seconds of the attention-getter/bullseye at the very start of the clip (default 3.0).")
     args = parser.parse_args()
+
+    durations = {
+        "freeze_duration": args.freeze_duration,
+        "anim_duration": args.anim_duration,
+        "bullseye_duration": args.bullseye_duration,
+    }
 
     videos_dir = args.videos_dir
     json_path = args.json_path
@@ -308,7 +324,7 @@ def main():
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as executor:
             futures = {
-                executor.submit(process_single_video, item, test_orders, args.output_dir, args.gpu_id): item
+                executor.submit(process_single_video, item, test_orders, args.output_dir, args.gpu_id, durations): item
                 for item in prepared
             }
             for future in concurrent.futures.as_completed(futures):

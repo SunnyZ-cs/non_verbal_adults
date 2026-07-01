@@ -1,178 +1,224 @@
-# Running process_icatcher.py on Sherlock's GPU partition
+# iCatcher+ gaze-coding pipeline for Sherlock (GPU)
 
-This is a ready-to-run package for processing all 73 participants'
-videos through iCatcher+ on Sherlock, using one GPU job array task per
-participant (much faster than one sequential job).
+Runs iCatcher+ gaze coding for this study's Lookit videos on Sherlock's GPU
+partition, one SLURM array task per participant. Originally built and
+tested end-to-end on the 73-participant pilot; designed to be reused as-is
+for the preregistered full study (200+ participants) and any batch after
+that - the only thing that should ever need editing between batches is
+`config.sh`.
 
-**Why this is a runbook and not something I ran for you:** Sherlock login
-requires Duo two-factor approval on your phone, so I can't SSH in or submit
-jobs on your behalf. Everything below is copy-paste-able from your own
-Terminal.
+## How it's organized
 
-## What I checked before building this
+Each batch of data ("run") gets its own directory on Sherlock, named after
+`RUN_NAME` in `config.sh`:
 
-I validated your data against the original script's assumptions:
+```
+$GROUP_HOME/icatcher_pipeline/
+  _shared/                  <- venv + downloaded iCatcher+ model (built once, reused by every run)
+  pilot73/                  <- this pilot's data + results (RUN_NAME="pilot73")
+  prereg_run1/               <- next batch, once you preregister and collect more data
+  prereg_run2/                <- etc.
+```
 
-- JSON has 73 unique participant response UUIDs.
-- The videos folder has 146 non-consent `.webm` files (2 per participant -
-  frame 9 and frame 13), all 146 match the filename pattern the script
-  expects, and all 146 UUIDs match exactly between the JSON and the videos
-  (zero orphans either direction).
-- Sample video durations are ~41.7-41.8s, consistent with the script's
-  hardcoded assumption of a 41.76s clip (3s bullseye + 18.76s animation +
-  20s freeze frame).
-- Total videos folder size: **2.1 GB**.
-
-So the data is clean - no filename or matching issues to fix before this can
-run.
-
-## What changed from your original script
-
-`process_icatcher_sherlock.py` is `process_icatcher.py` with four changes:
-
-1. `--gpu_id` is now a flag (default `0`), not hardcoded to `-1`. **This is
-   the actual fix that makes it use a GPU at all** - the original always
-   forced CPU regardless of what hardware you ran it on.
-2. `--uuid` filters processing to one participant, so a SLURM job array can
-   run all 73 in parallel.
-3. The webm→mp4 temp directory is now unique per process (was a shared
-   `temp_mp4/` folder that parallel jobs would have deleted out from under
-   each other).
-4. Each run writes its own `results/icatcher_summary_<uuid>.csv` instead of
-   one shared file that parallel jobs would overwrite. `merge_results.py`
-   combines them at the end.
+This keeps different batches of data (and their results) from ever
+overwriting each other, while the expensive one-time setup (environment,
+model download) is shared across all of them.
 
 ## Files in this folder
 
-| File | Purpose |
-|---|---|
-| `process_icatcher_sherlock.py` | The patched analysis script |
-| `make_participant_list.py` | Builds `participants.txt` (the array index) |
-| `merge_results.py` | Combines all 73 per-participant CSVs into one |
-| `setup_env.sh` | One-time environment setup on Sherlock |
-| `run_icatcher_array.sbatch` | The SLURM job array definition |
-| `transfer_to_sherlock.sh` | rsyncs your data up from your Mac |
-| `retrieve_results.sh` | rsyncs results back down to your Mac |
+| File | Purpose | Runs on |
+|---|---|---|
+| `config.sh` | **The only file you edit between batches.** SUNet ID, run name, data filenames. | sourced by everything, both machines |
+| `process_icatcher_sherlock.py` | The analysis script (GPU-enabled, one-participant-at-a-time) | Sherlock |
+| `make_participant_list.py` | Builds `participants.txt` (the array index) from the JSON | Sherlock |
+| `merge_results.py` | Combines all per-participant CSVs into one | Sherlock |
+| `setup_env.sh` | One-time-per-account environment build | Sherlock |
+| `run_icatcher_array.sbatch` | The SLURM job array definition | Sherlock |
+| `transfer_to_sherlock.sh` | rsyncs a batch's data + these scripts up | your Mac |
+| `retrieve_results.sh` | rsyncs results back down | your Mac |
 
-## Step-by-step
+## One-time setup (do this once, ever)
 
-### 0. Confirm you can log in
-
-```
-ssh <your_sunet_id>@login.sherlock.stanford.edu
-```
-
-Approve the Duo push when prompted. Type `exit` once you're in - just
-confirming this works before scripting around it.
-
-### 1. Transfer your data and these scripts to Sherlock
-
-From your **Mac** Terminal (not Sherlock):
-
-```
-cd ~/Desktop   # or wherever you saved this sherlock_icatcher_pipeline folder
-bash sherlock_icatcher_pipeline/transfer_to_sherlock.sh <your_sunet_id>
-```
-
-This copies your `videos folder` (2.1 GB) and the JSON file from your
-Desktop, plus all the scripts in this package, to
-`$GROUP_HOME/icatcher_pipeline` on Sherlock. It'll prompt for Duo a couple
-of times - that's normal, each rsync is a separate connection.
-
-If your account doesn't have a `$GROUP_HOME` (likely, since you said this is
-a brand-new personal account with no PI sponsorship yet), open
-`transfer_to_sherlock.sh` and `run_icatcher_array.sbatch` and replace
-`$GROUP_HOME` with `$SCRATCH` everywhere - `$SCRATCH` is available to every
-account by default. (Note: files in `$SCRATCH` are subject to Sherlock's
-auto-purge policy after a period of inactivity, so don't leave results
-sitting there long-term - move final outputs back to your Mac when done.)
-
-### 2. Set up the environment (one time only)
-
-SSH into Sherlock, then grab an interactive GPU session so the setup script
-can actually verify a GPU is visible:
+### 0. Confirm Sherlock login works
 
 ```
 ssh <your_sunet_id>@login.sherlock.stanford.edu
-cd $GROUP_HOME/icatcher_pipeline   # or $SCRATCH/icatcher_pipeline
-sh_dev -g 1
-bash setup_env.sh
 ```
 
-This creates a Python venv (Sherlock's docs explicitly recommend against
-conda - see comments in the script), installs PyTorch + iCatcher+ + ffmpeg,
-and prints whether a GPU was detected. Leave the GPU session
-(`exit`) once it finishes.
+Approve the Duo push. `exit` once confirmed.
 
-Trigger the one-time model weights download (only needs to happen once,
-shared across all 73 array tasks via `$ICATCHER_DATA_DIR`):
+### 1. Build the shared environment
 
-```
-source venv/bin/activate
-export ICATCHER_DATA_DIR=$GROUP_HOME/icatcher_pipeline/icatcher_models
-icatcher "videos folder/<pick any one non-consent .webm or .mp4>" \
-  --output_annotation /tmp/icatcher_test --gpu_id 0 --fd_model opencv_dnn
-```
+This only needs to happen once per Sherlock account - `setup_env.sh`
+installs into a shared location (`_shared/`) that every future run reuses.
+You still need at least one run's data transferred first (below) so the
+script has a sample video to trigger the iCatcher+ model download, but you
+won't need to repeat this step for later batches unless a dependency needs
+updating (the script is safe to re-run - it skips work already done).
 
-(Use `--gpu_id -1` here if you're not on a GPU node for this quick test -
-the model download happens either way.)
+## Every new batch of data (the repeatable recipe)
 
-### 3. Build the participant list
+### 1. Point config.sh at the new batch
 
-```
-python make_participant_list.py "Whose-fault-is-it-_all-responses-identifiable.json" participants.txt
-```
+Open `config.sh` and update:
 
-This prints `Use this for the SLURM array range: --array=0-72` - confirm it
-says 72 (73 participants, zero-indexed).
+- `RUN_NAME` - a short label for this batch, e.g. `prereg_run1`
+- `JSON_FILENAME` - the exact filename of the new Lookit export, as it sits on your Desktop
+- `VIDEOS_FOLDER_NAME` - the exact folder name containing that batch's videos, as it sits on your Desktop
 
-### 4. Submit the job array
+Leave `SUNET_ID` and everything below the "usually no need to touch" line
+alone unless your Sherlock setup changed (e.g. you got a PI lab allocation
+and want to switch from `$SCRATCH` to `$GROUP_HOME`).
 
-```
-sbatch --array=0-72 run_icatcher_array.sbatch
-```
-
-Each of the 73 tasks requests 1 GPU on the public `gpu` partition (open to
-any Sherlock account, no PI sponsorship needed) and processes one
-participant's 2 videos. Expect some queue wait since `gpu` is shared
-cluster-wide - check status with:
-
-```
-squeue -u $USER
-```
-
-Per-task logs land in `slurm_logs/icatcher_<jobid>_<arrayindex>.out` /
-`.err`. A single participant (2 short clips) should take well under the
-30-minute time limit set in the script; raise `--time` in
-`run_icatcher_array.sbatch` if your queue waits suggest otherwise.
-
-### 5. Merge results once the array finishes
-
-```
-python merge_results.py results participants.txt icatcher_summary_combined.csv
-```
-
-This combines all 73 per-participant CSVs and tells you if any are missing
-(check that task's `.err` log if so - most likely cause is a corrupt/short
-video or an out-of-memory GPU error, both visible in the log).
-
-### 6. Pull results back to your Mac
+### 2. Transfer the data
 
 From your **Mac** Terminal:
 
 ```
-bash sherlock_icatcher_pipeline/retrieve_results.sh <your_sunet_id>
+cd ~/Desktop/sherlock_icatcher_pipeline
+bash transfer_to_sherlock.sh
 ```
 
-Lands in `~/Desktop/icatcher_results/`.
+One Duo prompt (the script reuses a single authenticated connection for
+everything). This creates `$GROUP_HOME/icatcher_pipeline/<RUN_NAME>/` on
+Sherlock and fills it with the videos folder, the JSON (renamed to the
+stable `data.json` on the remote side), and the pipeline scripts.
 
-## If something needs adjusting
+Rough timing: transfer time scales with your video data's size and your
+home upload bandwidth, not file count - budget more time for 200+
+participants than the pilot's ~2GB/225 files took.
 
-- **Job runs out of time/memory**: bump `--time` or `--mem` in
-  `run_icatcher_array.sbatch`.
-- **You get a PI/lab Sherlock allocation later**: switch `-p gpu` to your
-  lab's owner partition in `run_icatcher_array.sbatch` for higher priority
-  (no other changes needed).
-- **iCatcher accuracy/options**: the analysis logic (which frames count as
-  "left looking" etc.) is unchanged from your original script - I only
-  touched GPU/parallelism plumbing, not the science.
+### 3. Set up the environment (only if this is the very first run ever)
+
+Skip this step for the second and later batches - `_shared/` already has
+what it needs.
+
+```
+ssh <your_sunet_id>@login.sherlock.stanford.edu
+cd $GROUP_HOME/icatcher_pipeline/<RUN_NAME>
+sh_dev -g 1
+bash setup_env.sh
+exit   # leave the GPU dev session once it finishes
+```
+
+### 4. Build the participant list and submit the array
+
+Back on the Sherlock **login node** (not the dev GPU session):
+
+```
+cd $GROUP_HOME/icatcher_pipeline/<RUN_NAME>
+python make_participant_list.py data.json participants.txt
+```
+
+This prints the exact `--array=0-N` range to use (0-72 for 73
+participants, 0-199 for 200, etc.) - always copy that number rather than
+assuming, in case a participant has no UUID recorded.
+
+```
+sbatch --array=0-N run_icatcher_array.sbatch
+squeue -u $USER -r
+```
+
+**At 200+ participants**, throttle concurrency so you're not requesting
+200 GPUs at once - it schedules faster and avoids any per-user job/GPU
+caps:
+
+```
+sbatch --array=0-N%20 run_icatcher_array.sbatch
+```
+
+(`%20` = never run more than 20 array tasks at a time; all 200 still get
+queued and will run in batches of 20.)
+
+Your laptop going to sleep or losing its SSH connection does **not** affect
+the array job - it runs entirely on Sherlock's compute nodes. Just
+reconnect and check `squeue` whenever.
+
+### 5. Check for failures, then merge
+
+Once `squeue -u $USER -r` comes up empty:
+
+```
+ls results/ | wc -l                         # should equal your participant count
+sacct -j <jobid> --format=JobID,State,ExitCode -X | awk '{print $2}' | sort | uniq -c
+```
+
+If some tasks show `FAILED` or the `results/` count is short, check that
+task's log before merging:
+
+```
+cat slurm_logs/icatcher_<jobid>_<arrayindex>.err
+```
+
+Once satisfied:
+
+```
+ml load python/3.9.0
+source $GROUP_HOME/icatcher_pipeline/_shared/venv/bin/activate
+python merge_results.py results participants.txt icatcher_summary_combined.csv
+```
+
+(Both the `ml load` and `source .../activate` are needed in a fresh login
+shell - the venv's Python binary depends on a shared library that only
+resolves once the module is loaded.)
+
+### 6. Retrieve results
+
+From your **Mac** Terminal:
+
+```
+cd ~/Desktop/sherlock_icatcher_pipeline
+bash retrieve_results.sh
+```
+
+Lands in `~/Desktop/icatcher_results_<RUN_NAME>/` - a separate folder per
+batch, so old and new results sit side by side.
+
+## Known quirks (already fixed in these scripts - here for context)
+
+These were all discovered live while running the pilot. They're baked into
+the scripts above, but documented here so future-you (or a collaborator)
+understands *why* the scripts look the way they do, and doesn't
+accidentally "simplify" one of these back into a bug:
+
+- **Spaces in remote paths break macOS's default `rsync`/`scp`.** Older
+  BSD rsync (what Apple ships) and newer OpenSSH's SFTP-mode `scp` both
+  mishandle paths with spaces or `$VAR` references on the remote side.
+  `transfer_to_sherlock.sh` and `retrieve_results.sh` route everything
+  through `rsync` over an explicit `ssh` invocation (never bare `scp`) to
+  avoid this.
+- **`icatcher --gpu_id` defaults matter.** The original pilot script had
+  this hardcoded to `-1` (CPU-only) - `process_icatcher_sherlock.py` makes
+  it a flag, defaulting to `0`.
+- **Sherlock's `ffmpeg` module has no `libx264`** (no `--enable-gpl` in
+  that build). The pipeline uses the built-in `mpeg4` encoder instead - if
+  you ever see `Unknown encoder 'libx264'`, something reverted this.
+- **`pandas>=2.3` has no prebuilt wheel for Python 3.9** (EOL upstream),
+  which forces a source build that fails on Sherlock's compiler toolchain.
+  `setup_env.sh` pins `pandas<2.3`.
+- **`ml load` inside a script doesn't persist to your shell.** Running
+  `bash setup_env.sh` loads modules only within that subprocess; if you
+  then run Python commands manually in the same terminal afterward,
+  you need to `ml load python/3.9.0` (and `ml load system ffmpeg`) yourself
+  first, or you'll silently fall back to the ancient system Python.
+- **`run_icatcher_array.sbatch` needs its own `ml load system ffmpeg`.**
+  It's a separate process from your interactive shell, so module loads
+  done there don't carry over either - the sbatch script loads everything
+  it needs itself.
+- **Job arrays with many pending tasks collapse in `squeue`'s default
+  output** (e.g. one line reading `32166386_[10-72]` represents 63 tasks,
+  not 1). Use `squeue -u $USER -r` to force one line per task when you
+  need an accurate count.
+
+## If something about the study design changes
+
+`process_icatcher_sherlock.py` has CLI flags for the trial timing
+(`--freeze_duration`, `--anim_duration`, `--bullseye_duration`) in case a
+future version of the study changes clip length - defaults match this
+study's current design (3s bullseye + 18.76s animation + 20s freeze). The
+filename-parsing regex assumes Lookit's standard export naming convention
+(`videoStream_..._<frame>-start-record-plugin-multiframe_<uuid>_...`) and
+`frame_idx == 9` / `frame_idx == 13` mapping to the two trial conditions -
+if the study's trial structure changes, `parse_video_filename()` and the
+condition-assignment logic in `process_single_video()` are the two places
+to update.
