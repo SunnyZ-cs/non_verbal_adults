@@ -82,11 +82,11 @@ def run_mediapipe_gaze(video_path, output_txt_path, sensitivity_offset=0.012):
             
             # Classify gaze relative to the participant's dynamic mean
             if avg_ratio < mean_ratio - sensitivity_offset:
-                gaze = "left"
-                left_count += 1
-            elif avg_ratio > mean_ratio + sensitivity_offset:
                 gaze = "right"
                 right_count += 1
+            elif avg_ratio > mean_ratio + sensitivity_offset:
+                gaze = "left"
+                left_count += 1
             else:
                 gaze = "center"
                 center_count += 1
