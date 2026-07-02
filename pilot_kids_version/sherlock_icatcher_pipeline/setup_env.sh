@@ -34,7 +34,18 @@ if [ ! -f ./config.sh ]; then
 fi
 source ./config.sh
 
-SHARED_DIR="${SHERLOCK_BASE_DIR}/_shared"
+# NOTE: SHERLOCK_BASE_DIR is intentionally stored as a literal, unexpanded
+# string in config.sh (e.g. containing "$GROUP_HOME" as literal characters,
+# not a live reference) so the same config.sh works whether it's read on
+# your Mac (which has no $GROUP_HOME) or on Sherlock. That means a plain
+# "${SHERLOCK_BASE_DIR}/_shared" substitution here would NOT expand
+# $GROUP_HOME - bash only expands variables once per token and does not
+# re-scan an already-substituted value for further $ references. Confirmed
+# by direct testing (on the sibling mediapipe pipeline): it silently
+# creates a literal directory called "$GROUP_HOME" instead of resolving
+# it. `eval echo` forces the needed second expansion pass, on this
+# Sherlock-native shell where $GROUP_HOME really is set.
+SHARED_DIR="$(eval echo "${SHERLOCK_BASE_DIR}")/_shared"
 mkdir -p "$SHARED_DIR"
 echo "Shared environment dir (reused across all runs): $SHARED_DIR"
 

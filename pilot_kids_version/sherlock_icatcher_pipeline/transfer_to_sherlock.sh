@@ -18,7 +18,6 @@ cd "$(dirname "$0")"
 source ./config.sh
 
 LOGIN_HOST="${SUNET_ID}@login.sherlock.stanford.edu"
-REMOTE_DIR="${SHERLOCK_BASE_DIR}/${RUN_NAME}"
 
 DESKTOP="$HOME/Desktop"
 
@@ -37,9 +36,22 @@ fi
 CONTROL_PATH="/tmp/sherlock-ssh-%r@%h:%p"
 SSH_OPTS=(-o "ControlMaster=auto" -o "ControlPath=$CONTROL_PATH" -o "ControlPersist=15m")
 
-echo "=== Run: $RUN_NAME -> $REMOTE_DIR ==="
 echo "=== Opening one authenticated connection (approve Duo once here - everything below reuses it) ==="
 ssh "${SSH_OPTS[@]}" -fN "$LOGIN_HOST"
+
+# Resolve $GROUP_HOME (or whatever SHERLOCK_BASE_DIR references) to a
+# CONCRETE path via a real remote shell command (plain ssh, not rsync).
+# Modern rsync (3.x, Homebrew's version) defaults to --protect-args, which
+# deliberately does NOT route its own remote-path arguments through a
+# shell - so a literal "$GROUP_HOME" embedded in a path gets passed
+# through unexpanded and rsync/mkdir create a directory literally called
+# "$GROUP_HOME" instead of resolving it. Confirmed live on the sibling
+# mediapipe pipeline once rsync got upgraded. Resolving it once via ssh
+# (which always uses a real remote shell for command execution) sidesteps
+# this regardless of local rsync version.
+RESOLVED_BASE_DIR=$(ssh "${SSH_OPTS[@]}" "$LOGIN_HOST" "echo ${SHERLOCK_BASE_DIR}")
+REMOTE_DIR="${RESOLVED_BASE_DIR}/${RUN_NAME}"
+echo "=== Run: $RUN_NAME -> $REMOTE_DIR ==="
 
 echo "=== 1/3: creating remote run directory ==="
 ssh "${SSH_OPTS[@]}" "$LOGIN_HOST" "mkdir -p '${REMOTE_DIR}'"
@@ -56,7 +68,7 @@ echo "=== closing the shared connection ==="
 ssh "${SSH_OPTS[@]}" -O exit "$LOGIN_HOST" 2>/dev/null || true
 
 echo ""
-echo "Done. Your data + scripts are now in ${SHERLOCK_BASE_DIR}/${RUN_NAME} on Sherlock."
+echo "Done. Your data + scripts are now in ${REMOTE_DIR} on Sherlock."
 echo "Note: the JSON was copied to Sherlock as 'data.json' (a stable name the"
 echo "other scripts expect) regardless of its original filename."
 echo "Next: ssh ${SUNET_ID}@login.sherlock.stanford.edu, cd into that directory,"

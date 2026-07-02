@@ -15,23 +15,31 @@ cd "$(dirname "$0")"
 source ./config.sh
 
 LOGIN_HOST="${SUNET_ID}@login.sherlock.stanford.edu"
-REMOTE_DIR="${SHERLOCK_BASE_DIR}/${RUN_NAME}"
 DEST="$HOME/Desktop/icatcher_results_${RUN_NAME}"
 mkdir -p "$DEST"
 
 CONTROL_PATH="/tmp/sherlock-ssh-%r@%h:%p"
 SSH_OPTS=(-o "ControlMaster=auto" -o "ControlPath=$CONTROL_PATH" -o "ControlPersist=15m")
 
-echo "=== Run: $RUN_NAME ==="
 echo "=== Opening one authenticated connection (approve Duo once here) ==="
 ssh "${SSH_OPTS[@]}" -fN "$LOGIN_HOST"
 
+# Resolve $GROUP_HOME (or whatever SHERLOCK_BASE_DIR references) to a
+# CONCRETE path via a real remote shell command (plain ssh, not rsync).
+# NOTE: this used to say "rsync always goes through a real remote shell,
+# so it works" - that was true for the old rsync but NOT for modern rsync
+# 3.x (Homebrew's version), which defaults to --protect-args and does NOT
+# route its own remote-path arguments through a shell. A literal
+# "$GROUP_HOME" embedded in an rsync path argument gets passed through
+# unexpanded, creating/reading a path literally called "$GROUP_HOME" -
+# confirmed live on the sibling mediapipe pipeline. Resolving it once via
+# plain ssh (which always uses a real remote shell for command execution,
+# regardless of rsync's behavior) sidesteps this for good.
+RESOLVED_BASE_DIR=$(ssh "${SSH_OPTS[@]}" "$LOGIN_HOST" "echo ${SHERLOCK_BASE_DIR}")
+REMOTE_DIR="${RESOLVED_BASE_DIR}/${RUN_NAME}"
+echo "=== Run: $RUN_NAME -> $REMOTE_DIR ==="
+
 echo "=== Pulling combined summary CSV ==="
-# NOTE: use rsync, not scp, for remote paths built from env vars like
-# $GROUP_HOME. Modern macOS ships an OpenSSH scp that defaults to the SFTP
-# protocol, which does NOT invoke a remote shell - so it can't expand
-# $GROUP_HOME server-side and fails with a literal "no such file" error.
-# rsync (like ssh) always goes through a real remote shell, so it works.
 rsync -avP -e "ssh ${SSH_OPTS[*]}" "${LOGIN_HOST}:${REMOTE_DIR}/icatcher_summary_combined.csv" "$DEST/"
 
 echo "=== Pulling per-participant CSVs (results/) ==="

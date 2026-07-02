@@ -187,6 +187,22 @@ accidentally "simplify" one of these back into a bug:
   `transfer_to_sherlock.sh` and `retrieve_results.sh` route everything
   through `rsync` over an explicit `ssh` invocation (never bare `scp`) to
   avoid this.
+- **A `$GROUP_HOME`-style path stored as a literal string needs a
+  *second* expansion pass, and it's easy to get only one of the two
+  places that need it.** `config.sh` stores `SHERLOCK_BASE_DIR`
+  single-quoted (e.g. literally containing the text `$GROUP_HOME`) so the
+  same file works on both your Mac (no `$GROUP_HOME`) and Sherlock. That
+  means anything that *uses* it must force a second expansion - getting
+  this wrong silently creates/references a directory literally named
+  `$GROUP_HOME` instead of the real path, with no error (confirmed live).
+  Two different fixes for two different contexts: Mac-side scripts
+  resolve it once via `ssh host 'echo $GROUP_HOME/...'` (ssh always runs
+  the remote command through a real shell); Sherlock-native scripts
+  (`setup_env.sh`, `run_icatcher_array.sbatch`) use
+  `eval echo "$SHERLOCK_BASE_DIR"`. Also note: modern rsync (3.x, e.g.
+  from Homebrew) defaults to `--protect-args`, which deliberately skips
+  remote shell expansion for its own path arguments - so `rsync` can't be
+  used for the resolution step itself, only plain `ssh` can.
 - **`icatcher --gpu_id` defaults matter.** The original pilot script had
   this hardcoded to `-1` (CPU-only) - `process_icatcher_sherlock.py` makes
   it a flag, defaulting to `0`.

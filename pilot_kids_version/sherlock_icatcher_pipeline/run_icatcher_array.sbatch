@@ -45,7 +45,11 @@ fi
 source ./config.sh
 
 RUN_DIR="$(pwd)"
-SHARED_DIR="${SHERLOCK_BASE_DIR}/_shared"
+# eval forces a second expansion pass so $GROUP_HOME (stored as a literal,
+# unexpanded string in config.sh - see setup_env.sh for why) actually
+# resolves here. A plain substitution would silently create/reference a
+# literal directory called "$GROUP_HOME" instead - confirmed by testing.
+SHARED_DIR="$(eval echo "${SHERLOCK_BASE_DIR}")/_shared"
 VIDEOS_DIR="$RUN_DIR/videos folder"
 JSON_PATH="$RUN_DIR/data.json"
 
