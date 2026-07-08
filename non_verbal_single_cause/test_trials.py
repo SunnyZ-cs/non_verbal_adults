@@ -2,7 +2,7 @@ import math
 from PIL import ImageDraw
 from familiarization_trials import (
     Color, Shape, Expression, Agent, Prop, Renderer, AnimationHelper, 
-    Timing, FPS, WIDTH, HEIGHT, AGENT_SIZE, GROUND_Y
+    Timing, FPS, WIDTH, HEIGHT, CENTER_X, AGENT_SIZE, GROUND_Y
 )
 
 # ==========================================
@@ -21,14 +21,18 @@ def draw_breakable_cube(self, draw: ImageDraw.ImageDraw, cube: BreakableCube):
     if not cube.visible: return
     # Size roughly fits well with AGENT_SIZE scaled geometry
     size = AGENT_SIZE
+    base_color = "#868e96"
+    hl = "#ced4da"
+    crease = "#495057"
     
     if cube.state == "whole":
         # Draw solid block resting on the ground
         left, top, right, bottom = cube.x - size/2, cube.y - size, cube.x + size/2, cube.y
-        draw.rectangle([left, top, right, bottom], fill="#868e96", outline=Color.BLACK.value, width=3)
+        draw.rectangle([left, top, right, bottom], fill=base_color)
+        draw.polygon([(left, top), (cube.x, top), (left+size*0.2, top+size*0.2), (left, top+size*0.5)], fill=hl)
         # Internal crease lines
-        draw.line([cube.x, top, cube.x - size/4, cube.y], fill=Color.BLACK.value, width=2)
-        draw.line([cube.x - size/4, cube.y - size/2, right, cube.y - size/3], fill=Color.BLACK.value, width=2)
+        draw.line([cube.x, top, cube.x - size/4, cube.y], fill=crease, width=2)
+        draw.line([cube.x - size/4, cube.y - size/2, right, cube.y - size/3], fill=crease, width=2)
     else:
         # Draw dynamic ballistic shards
         fs = size / 3  # finer shards
@@ -41,7 +45,11 @@ def draw_breakable_cube(self, draw: ImageDraw.ImageDraw, cube: BreakableCube):
                 rx = px * math.cos(rad) - py * math.sin(rad) + fx
                 ry = px * math.sin(rad) + py * math.cos(rad) + fy
                 rotated_pts.append((rx, ry))
-            draw.polygon(rotated_pts, fill="#868e96", outline=Color.BLACK.value, width=2)
+            draw.polygon(rotated_pts, fill=base_color)
+            if len(rotated_pts) >= 2:
+                mx = (rotated_pts[0][0] + rotated_pts[1][0])/2
+                my = (rotated_pts[0][1] + rotated_pts[1][1])/2
+                draw.polygon([rotated_pts[0], rotated_pts[1], (mx, my+2)], fill=hl)
 
 # Inject support for BreakableCube into the Renderer
 original_render = Renderer.render
@@ -67,53 +75,54 @@ Renderer.render = extended_render
 class TestTrialsExperiment:
     def __init__(self, c1_dict, c2_dict):
         self.r = Renderer()
-        self.agent1 = Agent("Agent1", c1_dict["shape"], c1_dict["color"], 100, 240)
-        self.agent2 = Agent("Agent2", c2_dict["shape"], c2_dict["color"], 250, 240)
-        self.green = Agent("green", Shape.SQUARE, Color.GREEN, 250, 60)
+        self.agent1 = Agent("Agent1", c1_dict["shape"], c1_dict["color"], AGENT_SIZE/2, 227)
+        self.agent2 = Agent("Agent2", c2_dict["shape"], c2_dict["color"], 200 + AGENT_SIZE, 227)
+        self.authority = Agent("authority", Shape.STAR, Color.YELLOW, CENTER_X, 60)
         
         # Place cube on right
-        self.cube = BreakableCube(400, GROUND_Y)
+        self.cube = BreakableCube(WIDTH - 100, GROUND_Y)
         
         self.props = [self.cube]
-        self.anim = AnimationHelper(self.r, [self.agent1, self.agent2, self.green], self.props)
+        self.anim = AnimationHelper(self.r, [self.agent1, self.agent2, self.authority], self.props)
 
     def reset_state(self):
-        self.agent1.x, self.agent1.y = 100, 240
-        self.agent2.x, self.agent2.y = 250, 240
+        self.agent1.x, self.agent1.y = AGENT_SIZE/2, 227
+        self.agent2.x, self.agent2.y = 200 + AGENT_SIZE, 227
         
         self.agent1.expression = Expression.NEUTRAL
         self.agent2.expression = Expression.NEUTRAL
-        self.green.expression = Expression.NEUTRAL
+        self.authority.expression = Expression.NEUTRAL
         
         self.cube.state = "whole"
         self.cube.fragments = []
         self.cube.visible = True
 
     def run_chain(self):
-        # 1. Agent 1 (distal cause) does nothing, pause for 0.15 seconds to keep timing alignment
-        self.anim.pause(0.15)
+        # 1. Agent 1 (distal cause) does nothing, pause for 0.35 seconds to keep timing alignment
+        self.anim.pause(0.35)
         
         # 2. Agent 2 (proximal cause) directly hits the Cube
-        stop_x_2 = 400 - AGENT_SIZE + 5
-        self.anim.move(self.agent2, stop_x_2, 240, 0.15) # direct hit
+        stop_x_2 = WIDTH - 100 - AGENT_SIZE + 5
+        self.anim.move(self.agent2, stop_x_2, 227, 0.35) # direct hit
         
         # 3. Cube Breaks Instantly!
         self.cube.state = "broken"
+        cx = WIDTH - 100
         self.cube.fragments = [
-            (395, 230, -8, -15, 0),
-            (405, 220, 5, -25, 45),
-            (415, 235, 12, -20, 90),
-            (385, 245, -15, -10, 15),
-            (395, 250, -5, -30, 200),
-            (405, 240, 3, -15, 75),
-            (415, 255, 18, -12, -45),
-            (390, 260, -2, -8, 120),
-            (400, 265, 8, -5, 60),
-            (420, 260, 22, -18, -90)
+            (cx-5, 230, -4, -7, 0),
+            (cx+5, 220, 2, -12, 45),
+            (cx+15, 235, 6, -10, 90),
+            (cx-15, 245, -7, -5, 15),
+            (cx-5, 250, -2, -15, 200),
+            (cx+5, 240, 1, -7, 75),
+            (cx+15, 255, 9, -6, -45),
+            (cx-10, 260, -1, -4, 120),
+            (cx, 265, 4, -2, 60),
+            (cx+20, 260, 11, -9, -90)
         ]
         
         # 4. Resolve Ballistic Shards
-        gravity = 3
+        gravity = 1.5
         active = True
         frame_count = 0
         while active and frame_count < 100:
@@ -130,7 +139,7 @@ class TestTrialsExperiment:
                 if nfy >= bound_y:
                     nfy = bound_y
                     ndy = 0          # Hard THUD, no vertical bouncing to eliminate jitter
-                    dx = dx * 0.75   # Friction slide smoothly
+                    dx = dx * 0.8   # Friction slide smoothly
                     
                     if abs(dx) < 0.5: dx = 0
                 
@@ -145,50 +154,35 @@ class TestTrialsExperiment:
         self.anim.pause(1.5)
         
     def punish(self, target_agent):
-        # 1. Green descends violently above target
-        self.anim.move(self.green, target_agent.x, target_agent.y - 75, Timing.MOVE_DURATION)
-        self.green.expression = Expression.ANGRY
+        # 1. Authority descends above target at proper distance
+        self.anim.move(self.authority, target_agent.x, target_agent.y - 140, Timing.MOVE_DURATION)
+        self.authority.expression = Expression.ANGRY
         
-        # 2. Green reaches straight down to grab the star
-        star_x, star_y = target_agent.x + 45, target_agent.y - 45
-        self.green.arm_target_r = (star_x, star_y)
-        self.anim.pause(0.2) # Hold initial contact
+        # 2. Authority uses Magic Wand to interact with the star
+        star_x, star_y = target_agent.x, target_agent.y - (AGENT_SIZE/2) - 25
+        self.authority.arm_target_r = (star_x, star_y)
+        self.anim.pause(0.2) # Contact pause
         
-        # 3. VIOLENT STRUGGLE / TENSION
-        import random
-        bases_gx, bases_gy = self.green.x, self.green.y
-        bases_tx, bases_ty = target_agent.x, target_agent.y
-        
-        for _ in range(25): # ~1 second of violent shaking
-            # Extreme jitter vectors
-            gx_off = random.uniform(-6, 6)
-            gy_off = random.uniform(-3, 3)
-            tx_off = random.uniform(-4, 4)
-            ty_off = random.uniform(-1, 1)
-            
-            self.green.x = bases_gx + gx_off
-            self.green.y = bases_gy + gy_off
-            
-            target_agent.x = bases_tx + tx_off
-            target_agent.y = bases_ty + ty_off
-            target_agent.expression = Expression.SAD # Sad/Shocked during struggle
-            
-            # Keep Hand anchored to the shaking star location
-            self.green.arm_target_r = (bases_tx + 45 + tx_off, bases_ty - 45 + ty_off)
+        # 3. Shake/Struggle logic (matching familiarization style but keeping tension)
+        start_gx = self.authority.x
+        for i in range(25):
+            # Jitter the star and the wand tip slightly
+            off = 5 * math.sin(i * 1.5)
+            self.authority.x = start_gx + off
+            target_agent.expression = Expression.SAD
+            self.authority.arm_target_r = (star_x + off, star_y)
             self.anim.snap()
             
-        # Restore perfect resting anchors
-        self.green.x, self.green.y = bases_gx, bases_gy
-        target_agent.x, target_agent.y = bases_tx, bases_ty
+        self.authority.x = start_gx
         
         # FIERCE SNAP: Transfer Star
         target_agent.has_star = False
         target_agent.expression = Expression.SAD
-        self.green.has_star = False # Star vanishes from screen completely!
+        self.authority.has_star = False # Star vanishes from screen completely!
         
-        # Retract arm instantly to visually complete the physics of a fierce yank
-        self.green.arm_target_r = None
-        self.anim.pause(0.1) # Minimum pose settling
+        # Retract wand to resting pose
+        self.authority.arm_target_r = None
+        self.anim.pause(0.5) 
 
     def build_test_loop(self, target_agent, filename):
         self.agent1.has_star = True
@@ -213,16 +207,13 @@ class TestTrialsExperiment:
         # Finalize and Output
         print(f"Exporting {filename}...")
         
-        # Embed the static 10 second pause natively to the last frame metadata 
         durations = [1000//FPS] * len(self.anim.frames)
-        durations[-1] = 10000 
         
         self.anim.frames[0].save(filename, save_all=True, append_images=self.anim.frames[1:], duration=durations, loop=0)
         
-        # Export freeze frame (the last frame of the animation)
-        freeze_filename = filename.replace(".gif", "_freeze.png")
-        self.anim.frames[-1].save(freeze_filename)
-        print(f"Exporting freeze frame {freeze_filename}...")
+        png_filename = filename.replace('.gif', '_freeze.png')
+        print(f"Exporting {png_filename}...")
+        self.anim.frames[-1].save(png_filename)
 
 
 if __name__ == "__main__":
@@ -256,12 +247,10 @@ if __name__ == "__main__":
     trans.blank(Timing.TRANSITION_BLANK)
     trans.ag(Timing.TRANSITION_AG)
 
-    # Durations mapping (respect the 10 sec freeze for test ending frames)
+    # Durations mapping
     d_distal = [1000//FPS] * len(distal_exp.anim.frames)
-    d_distal[-1] = 10000 
     
     d_proximal = [1000//FPS] * len(proximal_exp.anim.frames)
-    d_proximal[-1] = 10000 
     
     d_trans = [1000//FPS] * len(trans.frames)
 
@@ -271,6 +260,10 @@ if __name__ == "__main__":
     
     print("Exporting Test_Combo_1.gif...")
     c1_frames[0].save("Test_Combo_1.gif", save_all=True, append_images=c1_frames[1:], duration=c1_durations, loop=0)
+    
+    c1_png_filename = "Test_Combo_1_freeze.png"
+    print(f"Exporting {c1_png_filename}...")
+    c1_frames[-1].save(c1_png_filename)
 
     # Test combo 2: Proximal_Test_Final + Trans + Distal_Test_Final
     c2_frames = proximal_exp.anim.frames + trans.frames + distal_exp.anim.frames
@@ -278,3 +271,7 @@ if __name__ == "__main__":
     
     print("Exporting Test_Combo_2.gif...")
     c2_frames[0].save("Test_Combo_2.gif", save_all=True, append_images=c2_frames[1:], duration=c2_durations, loop=0)
+    
+    c2_png_filename = "Test_Combo_2_freeze.png"
+    print(f"Exporting {c2_png_filename}...")
+    c2_frames[-1].save(c2_png_filename)
