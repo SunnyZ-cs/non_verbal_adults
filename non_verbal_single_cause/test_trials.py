@@ -76,7 +76,7 @@ class TestTrialsExperiment:
     def __init__(self, c1_dict, c2_dict):
         self.r = Renderer()
         self.agent1 = Agent("Agent1", c1_dict["shape"], c1_dict["color"], 160, 227)
-        self.agent2 = Agent("Agent2", c2_dict["shape"], c2_dict["color"], 200 + AGENT_SIZE, 227)
+        self.agent2 = Agent("Agent2", c2_dict["shape"], c2_dict["color"], CENTER_X, 227)
         self.authority = Agent("authority", Shape.STAR, Color.YELLOW, CENTER_X, 60)
         
         # Place cube on right
@@ -87,7 +87,7 @@ class TestTrialsExperiment:
 
     def reset_state(self):
         self.agent1.x, self.agent1.y = 160, 227
-        self.agent2.x, self.agent2.y = 200 + AGENT_SIZE, 227
+        self.agent2.x, self.agent2.y = CENTER_X, 227
         
         self.agent1.expression = Expression.NEUTRAL
         self.agent2.expression = Expression.NEUTRAL
