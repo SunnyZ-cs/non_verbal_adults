@@ -98,8 +98,8 @@ class TestTrialsExperiment:
         self.cube.visible = True
 
     def run_chain(self):
-        # 1. Agent 1 (distal cause) does nothing, pause for 0.35 seconds to keep timing alignment
-        self.anim.pause(0.35)
+        # 1. Agent 1 (distal cause) does nothing, pause for 9/FPS seconds to keep frame alignment
+        self.anim.pause(9 / FPS)
         
         # 2. Agent 2 (proximal cause) directly hits the Cube
         stop_x_2 = WIDTH - 100 - AGENT_SIZE + 5
