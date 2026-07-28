@@ -101,7 +101,9 @@ const test_order = Math.random() < 0.5 ?
     [{name: 'distal', anim: distal_anim, freeze: distal_freeze}, {name: 'proximal', anim: proximal_anim, freeze: proximal_freeze}] :
     [{name: 'proximal', anim: proximal_anim, freeze: proximal_freeze}, {name: 'distal', anim: distal_anim, freeze: distal_freeze}];
 
-const assigned_combo = (is_forward ? 'Test_Combo_' : 'Reverse_Test_Combo_') + (test_order[0].name === 'distal' ? '1' : '2');
+const assigned_combo = is_forward ? 
+    (test_order[0].name === 'distal' ? 'distal_test_final.gif' : 'proximal_test_final.gif') :
+    (test_order[0].name === 'distal' ? 'reverse_distal_test_final.gif' : 'reverse_proximal_test_final.gif');
 
 // ════════════════════════════════════════════════════════════════════
 //  INIT jsPsych

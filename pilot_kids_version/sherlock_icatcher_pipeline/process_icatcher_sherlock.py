@@ -247,11 +247,22 @@ def process_single_video(item, test_orders, output_dir, gpu_id, durations=None):
         direction = 'forward'
     elif 'backward' in direction:
         direction = 'backward'
+    # Map old combo string names (if present) to the new GIF file names
+    if assigned_combo:
+        if assigned_combo in ('Test_Combo_1', 'Test_Combo_1.gif'):
+            assigned_combo = 'distal_test_final.gif'
+        elif assigned_combo in ('Test_Combo_2', 'Test_Combo_2.gif'):
+            assigned_combo = 'proximal_test_final.gif'
+        elif assigned_combo in ('Reverse_Test_Combo_1', 'Reverse_Test_Combo_1.gif'):
+            assigned_combo = 'reverse_distal_test_final.gif'
+        elif assigned_combo in ('Reverse_Test_Combo_2', 'Reverse_Test_Combo_2.gif'):
+            assigned_combo = 'reverse_proximal_test_final.gif'
+
     if not assigned_combo and order:
         if order == ['distal', 'proximal']:
-            assigned_combo = 'Test_Combo_1'
+            assigned_combo = 'distal_test_final.gif'
         elif order == ['proximal', 'distal']:
-            assigned_combo = 'Test_Combo_2'
+            assigned_combo = 'proximal_test_final.gif'
         else:
             assigned_combo = 'unknown'
 
