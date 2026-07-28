@@ -217,6 +217,10 @@ class TestTrialsExperiment:
 
 
 if __name__ == "__main__":
+    from PIL import Image
+    import shutil
+    import os
+
     # E = Teal Triangle, F = Red Square, G = Brown Circle, H = Blue Square
     E = {"shape": Shape.TRIANGLE, "color": Color.TEAL}
     F = {"shape": Shape.SQUARE, "color": Color.RED}
@@ -240,7 +244,7 @@ if __name__ == "__main__":
     proximal_exp.build_test_loop(target_agent=proximal_exp.agent2, filename="proximal_test_final.gif")
     
     # ==========================
-    # COMBO GENERATION
+    # COMBO GENERATION (Original)
     # ==========================
     # Transition animation generator (blank then attention getter)
     trans = AnimationHelper(Renderer(), [], [])
@@ -249,9 +253,7 @@ if __name__ == "__main__":
 
     # Durations mapping
     d_distal = [1000//FPS] * len(distal_exp.anim.frames)
-    
     d_proximal = [1000//FPS] * len(proximal_exp.anim.frames)
-    
     d_trans = [1000//FPS] * len(trans.frames)
 
     # Test combo 1: Distal_Test_Final + Trans + Proximal_Test_Final
@@ -275,3 +277,71 @@ if __name__ == "__main__":
     c2_png_filename = "Test_Combo_2_freeze.png"
     print(f"Exporting {c2_png_filename}...")
     c2_frames[-1].save(c2_png_filename)
+
+    # ==========================================
+    # MIRRORED (REVERSE) GENERATION
+    # ==========================================
+    def get_reversed_frames(frames):
+        return [f.transpose(Image.FLIP_LEFT_RIGHT) for f in frames]
+
+    reverse_distal_frames = get_reversed_frames(distal_exp.anim.frames)
+    reverse_proximal_frames = get_reversed_frames(proximal_exp.anim.frames)
+    reverse_trans_frames = get_reversed_frames(trans.frames)
+
+    # Save reverse distal test
+    print("Exporting reverse_distal_test_final.gif...")
+    reverse_distal_frames[0].save("reverse_distal_test_final.gif", save_all=True, append_images=reverse_distal_frames[1:], duration=d_distal, loop=0)
+    print("Exporting reverse_distal_test_final_freeze.png...")
+    reverse_distal_frames[-1].save("reverse_distal_test_final_freeze.png")
+
+    # Save reverse proximal test
+    print("Exporting reverse_proximal_test_final.gif...")
+    reverse_proximal_frames[0].save("reverse_proximal_test_final.gif", save_all=True, append_images=reverse_proximal_frames[1:], duration=d_proximal, loop=0)
+    print("Exporting reverse_proximal_test_final_freeze.png...")
+    reverse_proximal_frames[-1].save("reverse_proximal_test_final_freeze.png")
+
+    # Reverse Combo 1: Reverse Distal + Trans + Reverse Proximal
+    rc1_frames = reverse_distal_frames + reverse_trans_frames + reverse_proximal_frames
+    print("Exporting Reverse_Test_Combo_1.gif...")
+    rc1_frames[0].save("Reverse_Test_Combo_1.gif", save_all=True, append_images=rc1_frames[1:], duration=c1_durations, loop=0)
+    print("Exporting Reverse_Test_Combo_1_freeze.png...")
+    rc1_frames[-1].save("Reverse_Test_Combo_1_freeze.png")
+
+    # Reverse Combo 2: Reverse Proximal + Trans + Reverse Distal
+    rc2_frames = reverse_proximal_frames + reverse_trans_frames + reverse_distal_frames
+    print("Exporting Reverse_Test_Combo_2.gif...")
+    rc2_frames[0].save("Reverse_Test_Combo_2.gif", save_all=True, append_images=rc2_frames[1:], duration=c2_durations, loop=0)
+    print("Exporting Reverse_Test_Combo_2_freeze.png...")
+    rc2_frames[-1].save("Reverse_Test_Combo_2_freeze.png")
+
+    # ==========================================
+    # COPY TO REPOSITORY MATERIALS FOLDER
+    # ==========================================
+    dest_dir = "materials/"
+    files_to_copy = [
+        "distal_test_final.gif",
+        "distal_test_final_freeze.png",
+        "proximal_test_final.gif",
+        "proximal_test_final_freeze.png",
+        "Test_Combo_1.gif",
+        "Test_Combo_1_freeze.png",
+        "Test_Combo_2.gif",
+        "Test_Combo_2_freeze.png",
+        "reverse_distal_test_final.gif",
+        "reverse_distal_test_final_freeze.png",
+        "reverse_proximal_test_final.gif",
+        "reverse_proximal_test_final_freeze.png",
+        "Reverse_Test_Combo_1.gif",
+        "Reverse_Test_Combo_1_freeze.png",
+        "Reverse_Test_Combo_2.gif",
+        "Reverse_Test_Combo_2_freeze.png",
+    ]
+    
+    if os.path.exists(dest_dir):
+        print(f"Copying files to materials directory: {dest_dir}")
+        for f in files_to_copy:
+            if os.path.exists(f):
+                shutil.copy(f, os.path.join(dest_dir, f))
+                print(f"  Copied {f}")
+    else:
+        print(f"Destination directory {dest_dir} does not exist.")

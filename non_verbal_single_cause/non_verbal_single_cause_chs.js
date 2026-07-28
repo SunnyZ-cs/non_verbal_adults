@@ -83,12 +83,15 @@ const fam_durations = {
 const fam_duration = fam_durations[fam_combo_index];
 const fam_freeze_duration = 4000; // 4 seconds freeze for fam trials
 
-// Test Trials Details
-const distal_anim = BASE + 'distal_test_final.gif';
-const distal_freeze = BASE + 'distal_test_final_freeze.png';
+// Test Trials Details and Random Direction Assignment
+const direction = Math.random() < 0.5 ? 'forward' : 'backward';
+const is_forward = direction === 'forward';
 
-const proximal_anim = BASE + 'proximal_test_final.gif';
-const proximal_freeze = BASE + 'proximal_test_final_freeze.png';
+const distal_anim = BASE + (is_forward ? 'distal_test_final.gif' : 'reverse_distal_test_final.gif');
+const distal_freeze = BASE + (is_forward ? 'distal_test_final_freeze.png' : 'reverse_distal_test_final_freeze.png');
+
+const proximal_anim = BASE + (is_forward ? 'proximal_test_final.gif' : 'reverse_proximal_test_final.gif');
+const proximal_freeze = BASE + (is_forward ? 'proximal_test_final_freeze.png' : 'reverse_proximal_test_final_freeze.png');
 
 const test_anim_duration = 18760;
 const freeze_duration = 20000; // 20 seconds
@@ -97,6 +100,8 @@ const freeze_duration = 20000; // 20 seconds
 const test_order = Math.random() < 0.5 ? 
     [{name: 'distal', anim: distal_anim, freeze: distal_freeze}, {name: 'proximal', anim: proximal_anim, freeze: proximal_freeze}] :
     [{name: 'proximal', anim: proximal_anim, freeze: proximal_freeze}, {name: 'distal', anim: distal_anim, freeze: distal_freeze}];
+
+const assigned_combo = (is_forward ? 'Test_Combo_' : 'Reverse_Test_Combo_') + (test_order[0].name === 'distal' ? '1' : '2');
 
 // ════════════════════════════════════════════════════════════════════
 //  INIT jsPsych
@@ -353,7 +358,9 @@ jsPsych.run([
         data: {
             trial_type: 'randomization_info',
             fam_combo: fam_combo_index,
-            test_order: [test_order[0].name, test_order[1].name]
+            test_order: [test_order[0].name, test_order[1].name],
+            direction: direction,
+            assigned_combo: assigned_combo
         }
     },
 
