@@ -289,8 +289,6 @@ def process_single_video(item, test_orders, output_dir, gpu_id, durations=None):
         "Frame Index": frame_idx,
         "Condition": condition,
         "Direction": direction,
-        "Assigned Direction": direction,
-        "Assigned Combo": assigned_combo,
         "Left Looking Frames": left_frames,
         "Right Looking Frames": right_frames,
         "Away/Other Frames": away_frames,

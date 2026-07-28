@@ -280,8 +280,6 @@ def process_single_video(item, test_orders):
         "Frame Index": frame_idx,
         "Condition": condition,
         "Direction": direction,
-        "Assigned Direction": direction,
-        "Assigned Combo": assigned_combo,
         "Left Looking Frames": left_frames,
         "Right Looking Frames": right_frames,
         "Away/Other Frames": away_frames,
