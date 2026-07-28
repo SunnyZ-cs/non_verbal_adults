@@ -84,8 +84,8 @@ const fam_duration = fam_durations[fam_combo_index];
 const fam_freeze_duration = 4000; // 4 seconds freeze for fam trials
 
 // Test Trials Details and Random Direction Assignment
-const direction = Math.random() < 0.5 ? 'forward/left to right' : 'backward/right to left';
-const is_forward = direction === 'forward/left to right';
+const direction = Math.random() < 0.5 ? 'forward' : 'backward';
+const is_forward = direction === 'forward';
 
 const distal_anim = BASE + (is_forward ? 'distal_test_final.gif' : 'reverse_distal_test_final.gif');
 const distal_freeze = BASE + (is_forward ? 'distal_test_final_freeze.png' : 'reverse_distal_test_final_freeze.png');

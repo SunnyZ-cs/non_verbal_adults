@@ -240,9 +240,13 @@ def process_single_video(item, test_orders, output_dir, gpu_id, durations=None):
     age_days = meta.get('age_days')
     age_years = meta.get('age_years')
 
-    # Default to 'forward/left to right' for backward compatibility with existing data
+    # Default to 'forward' for backward compatibility with existing data
     if not direction:
-        direction = 'forward/left to right'
+        direction = 'forward'
+    elif 'forward' in direction:
+        direction = 'forward'
+    elif 'backward' in direction:
+        direction = 'backward'
     if not assigned_combo and order:
         if order == ['distal', 'proximal']:
             assigned_combo = 'Test_Combo_1'
