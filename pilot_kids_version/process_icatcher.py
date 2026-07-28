@@ -116,14 +116,21 @@ def load_test_orders(json_path):
                 age_years = None
                 
             test_order = None
+            direction = None
+            assigned_combo = None
             exp_data = item.get('exp_data', [])
             for trial in exp_data:
                 if 'test_order' in trial:
                     test_order = trial['test_order']
-                    break
+                if 'direction' in trial:
+                    direction = trial['direction']
+                if 'assigned_combo' in trial:
+                    assigned_combo = trial['assigned_combo']
                     
             metadata[uuid] = {
                 'test_order': test_order,
+                'direction': direction,
+                'assigned_combo': assigned_combo,
                 'age_days': age_days,
                 'age_years': age_years
             }
@@ -220,9 +227,22 @@ def process_single_video(item, test_orders):
         
     meta = test_orders.get(resp_uuid, {})
     order = meta.get('test_order')
+    direction = meta.get('direction')
+    assigned_combo = meta.get('assigned_combo')
     age_days = meta.get('age_days')
     age_years = meta.get('age_years')
     
+    # Default to 'forward/left to right' for backward compatibility with existing data
+    if not direction:
+        direction = 'forward/left to right'
+    if not assigned_combo and order:
+        if order == ['distal', 'proximal']:
+            assigned_combo = 'Test_Combo_1'
+        elif order == ['proximal', 'distal']:
+            assigned_combo = 'Test_Combo_2'
+        else:
+            assigned_combo = 'unknown'
+            
     if not order or len(order) < 2:
         print(f"Warning: No test order found in JSON for response UUID {resp_uuid}. Setting condition to 'unknown'.")
         condition = "unknown"
@@ -254,6 +274,9 @@ def process_single_video(item, test_orders):
         "Age (Years)": age_years,
         "Frame Index": frame_idx,
         "Condition": condition,
+        "Direction": direction,
+        "Assigned Direction": direction,
+        "Assigned Combo": assigned_combo,
         "Left Looking Frames": left_frames,
         "Right Looking Frames": right_frames,
         "Away/Other Frames": away_frames,
