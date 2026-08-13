@@ -83,7 +83,11 @@ for (let i = warmup_positions.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [warmup_positions[i], warmup_positions[j]] = [warmup_positions[j], warmup_positions[i]];
 }
-const warmup_duration = 15600;        // each warmup GIF plays once (~13.4-13.9 s) then holds its last frame
+const warmup_durations = {
+    left: 13880,
+    center: 13880,
+    right: 13440
+};
 const warmup_gap = 1000;              // blank between warmups
 
 // ── Context / direction / order randomization (unchanged) ──
@@ -222,8 +226,8 @@ function buildWarmupPunishTrial(position, index) {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `<img src="${BASE}warmup_punish_${position}.gif" class="trial-visual">`,
         choices: "NO_KEYS",
-        trial_duration: warmup_duration,
-        post_trial_gap: warmup_gap,
+        trial_duration: warmup_durations[position],
+        post_trial_gap: 0,
         data: { trial_type: 'warmup_punish', warmup_position: position, warmup_index: index }
     };
 }
@@ -386,7 +390,7 @@ jsPsych.run([
             assigned_combo: assigned_combo,
             context: context,
             phase_durations: {
-                warmup: warmup_duration,
+                warmup: warmup_durations,
                 part1: part1_duration,
                 anticipatory_freeze: antic_duration,
                 part2: part2_duration,
@@ -397,8 +401,11 @@ jsPsych.run([
 
     // ── Warmup Phase: 3 punishment-only warmups, single character,
     //    positions randomized (order recorded above) ──
+    bullseyeTrial('warmup_0'),
     buildWarmupPunishTrial(warmup_positions[0], 0),
+    bullseyeTrial('warmup_1'),
     buildWarmupPunishTrial(warmup_positions[1], 1),
+    bullseyeTrial('warmup_2'),
     buildWarmupPunishTrial(warmup_positions[2], 2),
 
     // ── Test Phase 1 ──
