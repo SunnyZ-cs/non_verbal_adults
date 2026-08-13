@@ -74,7 +74,7 @@ document.head.appendChild(_style);
 //  CONFIG
 // ════════════════════════════════════════════════════════════════════
 
-const BASE = 'https://raw.githubusercontent.com/SunnyZ-cs/non_verbal_adults/main/non_verbal_full_study/materials/';
+const BASE = 'https://raw.githubusercontent.com/SunnyZ-cs/non_verbal_adults/main/non_verbal_full_study_updated/materials/';
 
 // ── Warmup (punishment-only, single character; replaces familiarization) ──
 const warmup_positions = ['left', 'center', 'right'];
