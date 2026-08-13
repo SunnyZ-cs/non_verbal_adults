@@ -224,7 +224,10 @@ const outro_video = buildVideoTrial('overall_study_end.mp4', 'overall_study_end'
 function buildWarmupPunishTrial(position, index) {
     return {
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img src="${BASE}warmup_punish_${position}.gif" class="trial-visual">`,
+        stimulus: function() {
+            const cb = Date.now();
+            return `<img src="${BASE}warmup_punish_${position}.gif?cb=${cb}" class="trial-visual">`;
+        },
         choices: "NO_KEYS",
         trial_duration: warmup_durations[position],
         post_trial_gap: 0,
@@ -272,6 +275,7 @@ function bullseyeTrial(tag) {
 function buildTestTimeline(testObj) {
     const trials = [];
     const f = testObj.files;
+    let trial_cb = null;
 
     // 0. Start webcam recording FIRST.
     trials.push(start_recording);
@@ -283,19 +287,31 @@ function buildTestTimeline(testObj) {
     //    (single <img>, zero-flash src swaps; all images preloaded first)
     trials.push({
         type: jsPsychHtmlKeyboardResponse,
-        stimulus: `<img id="test-visual" src="${f.part1}" class="trial-visual">`,
+        stimulus: function() {
+            trial_cb = Date.now();
+            return `<img id="test-visual" src="${f.part1}?cb=${trial_cb}" class="trial-visual">`;
+        },
         choices: "NO_KEYS",
         trial_duration: part1_duration + antic_duration + part2_duration + freeze_duration,
         on_load: function() {
-            // Preload every later phase immediately so swaps are instant
-            [f.antic, f.part2, f.freeze].forEach(src => { const im = new Image(); im.src = src; });
+            const cb = trial_cb || Date.now();
+            const antic_url = f.antic + '?cb=' + cb;
+            const part2_url = f.part2 + '?cb=' + cb;
+            const freeze_url = f.freeze + '?cb=' + cb;
+
+            // Preload static PNGs using new Image()
+            [antic_url, freeze_url].forEach(src => { const im = new Image(); im.src = src; });
+
+            // Preload GIF using fetch to avoid auto-play in background
+            fetch(part2_url).catch(err => console.warn('Preload part2 failed:', err));
+
             const el = document.getElementById('test-visual');
             // ANTICIPATORY FREEZE: angry star at center, target not yet knowable
-            setTimeout(function() { if (el) el.src = f.antic; }, part1_duration);
+            setTimeout(function() { if (el) el.src = antic_url; }, part1_duration);
             // Reveal: authority flies to its target and removes the star
-            setTimeout(function() { if (el) el.src = f.part2; }, part1_duration + antic_duration);
+            setTimeout(function() { if (el) el.src = part2_url; }, part1_duration + antic_duration);
             // Outcome freeze: post-punishment looking time
-            setTimeout(function() { if (el) el.src = f.freeze; }, part1_duration + antic_duration + part2_duration);
+            setTimeout(function() { if (el) el.src = freeze_url; }, part1_duration + antic_duration + part2_duration);
         },
         data: {
             trial_type: testObj.name + '_full_test',
