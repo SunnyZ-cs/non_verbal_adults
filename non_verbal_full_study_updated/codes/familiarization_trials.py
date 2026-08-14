@@ -670,8 +670,8 @@ class Experiment:
         self.anim.move(helper, helper.start_x, helper.start_y, Timing.MOVE_DURATION)
 
     def _give_punishment(self, mischief):
-        self.anim.move(self.authority, mischief.x, mischief.y - 140, Timing.MOVE_DURATION)
         self.authority.expression = Expression.ANGRY
+        self.anim.move(self.authority, mischief.x, mischief.y - 140, Timing.MOVE_DURATION)
         self.authority.arm_target_r = (mischief.x, mischief.y - (AGENT_SIZE/2) - 25)
         start_gx = self.authority.x
         for i in range(15):

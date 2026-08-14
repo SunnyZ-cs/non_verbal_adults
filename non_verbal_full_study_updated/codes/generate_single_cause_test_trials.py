@@ -154,9 +154,9 @@ class TestTrialsExperiment:
         self.anim.pause(1.5)
         
     def punish(self, target_agent):
+        self.authority.expression = Expression.ANGRY
         # 1. Authority descends above target at proper distance
         self.anim.move(self.authority, target_agent.x, target_agent.y - 140, Timing.MOVE_DURATION)
-        self.authority.expression = Expression.ANGRY
         
         # 2. Authority uses Magic Wand to interact with the star
         star_x, star_y = target_agent.x, target_agent.y - (AGENT_SIZE/2) - 25

@@ -106,8 +106,8 @@ def setup_scene(scene_name, scene_x, props):
 
 
 def give_punishment(anim, mischief, authority):
-    anim.move(authority, mischief.x, mischief.y - 140, Timing.MOVE_DURATION)
     authority.expression = Expression.ANGRY
+    anim.move(authority, mischief.x, mischief.y - 140, Timing.MOVE_DURATION)
     authority.arm_target_r = (mischief.x, mischief.y - (AGENT_SIZE / 2) - 25)
     start_gx = authority.x
     for i in range(15):
