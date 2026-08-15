@@ -212,12 +212,30 @@ class TestTrialsExperiment:
         durations = [1000//FPS] * len(self.anim.frames)
         durations[-1] = 10000 
         
-        self.anim.frames[0].save(filename, save_all=True, append_images=self.anim.frames[1:], duration=durations, loop=0)
+        self.anim.frames[0].save(filename, save_all=True, append_images=self.anim.frames[1:], duration=durations, loop=0, optimize=False)
         
         # Save freeze PNG
         freeze_filename = filename.replace(".gif", "_freeze.png")
         print(f"Exporting {freeze_filename}...")
         self.anim.frames[-1].save(freeze_filename)
+
+        # Generate and save part1, part2, and anticipatory freeze
+        part1_frames = self.anim.frames[0:398]
+        part2_frames = self.anim.frames[398:]
+        antic_freeze = self.anim.frames[397]
+
+        part1_filename = filename.replace('_final.gif', '_part1.gif')
+        part2_filename = filename.replace('_final.gif', '_part2.gif')
+        antic_filename = filename.replace('_final.gif', '_anticipatory_freeze.png')
+
+        print(f"Exporting {part1_filename}...")
+        part1_frames[0].save(part1_filename, save_all=True, append_images=part1_frames[1:], duration=durations[:398], loop=0, optimize=False)
+
+        print(f"Exporting {part2_filename}...")
+        part2_frames[0].save(part2_filename, save_all=True, append_images=part2_frames[1:], duration=durations[398:], loop=0, optimize=False)
+
+        print(f"Exporting {antic_filename}...")
+        antic_freeze.save(antic_filename)
 
 
 if __name__ == "__main__":
@@ -269,7 +287,7 @@ if __name__ == "__main__":
     c1_durations = d_distal + d_trans + d_proximal
     
     print("Exporting Test_Combo_1.gif...")
-    c1_frames[0].save("Test_Combo_1.gif", save_all=True, append_images=c1_frames[1:], duration=c1_durations, loop=0)
+    c1_frames[0].save("Test_Combo_1.gif", save_all=True, append_images=c1_frames[1:], duration=c1_durations, loop=0, optimize=False)
     print("Exporting Test_Combo_1_freeze.png...")
     c1_frames[-1].save("Test_Combo_1_freeze.png")
 
@@ -278,7 +296,7 @@ if __name__ == "__main__":
     c2_durations = d_proximal + d_trans + d_distal
     
     print("Exporting Test_Combo_2.gif...")
-    c2_frames[0].save("Test_Combo_2.gif", save_all=True, append_images=c2_frames[1:], duration=c2_durations, loop=0)
+    c2_frames[0].save("Test_Combo_2.gif", save_all=True, append_images=c2_frames[1:], duration=c2_durations, loop=0, optimize=False)
     print("Exporting Test_Combo_2_freeze.png...")
     c2_frames[-1].save("Test_Combo_2_freeze.png")
 
@@ -294,27 +312,51 @@ if __name__ == "__main__":
 
     # Save reverse distal test
     print("Exporting reverse_distal_test_final.gif...")
-    reverse_distal_frames[0].save("reverse_distal_test_final.gif", save_all=True, append_images=reverse_distal_frames[1:], duration=d_distal, loop=0)
+    reverse_distal_frames[0].save("reverse_distal_test_final.gif", save_all=True, append_images=reverse_distal_frames[1:], duration=d_distal, loop=0, optimize=False)
     print("Exporting reverse_distal_test_final_freeze.png...")
     reverse_distal_frames[-1].save("reverse_distal_test_final_freeze.png")
 
+    # Save reverse distal test parts
+    reverse_distal_part1 = get_reversed_frames(distal_exp.anim.frames[0:398])
+    reverse_distal_part2 = get_reversed_frames(distal_exp.anim.frames[398:])
+    reverse_distal_antic = distal_exp.anim.frames[397].transpose(Image.FLIP_LEFT_RIGHT)
+
+    print("Exporting reverse_distal_test_part1.gif...")
+    reverse_distal_part1[0].save("reverse_distal_test_part1.gif", save_all=True, append_images=reverse_distal_part1[1:], duration=d_distal[:398], loop=0, optimize=False)
+    print("Exporting reverse_distal_test_part2.gif...")
+    reverse_distal_part2[0].save("reverse_distal_test_part2.gif", save_all=True, append_images=reverse_distal_part2[1:], duration=d_distal[398:], loop=0, optimize=False)
+    print("Exporting reverse_distal_test_anticipatory_freeze.png...")
+    reverse_distal_antic.save("reverse_distal_test_anticipatory_freeze.png")
+
     # Save reverse proximal test
     print("Exporting reverse_proximal_test_final.gif...")
-    reverse_proximal_frames[0].save("reverse_proximal_test_final.gif", save_all=True, append_images=reverse_proximal_frames[1:], duration=d_proximal, loop=0)
+    reverse_proximal_frames[0].save("reverse_proximal_test_final.gif", save_all=True, append_images=reverse_proximal_frames[1:], duration=d_proximal, loop=0, optimize=False)
     print("Exporting reverse_proximal_test_final_freeze.png...")
     reverse_proximal_frames[-1].save("reverse_proximal_test_final_freeze.png")
+
+    # Save reverse proximal test parts
+    reverse_proximal_part1 = get_reversed_frames(proximal_exp.anim.frames[0:398])
+    reverse_proximal_part2 = get_reversed_frames(proximal_exp.anim.frames[398:])
+    reverse_proximal_antic = proximal_exp.anim.frames[397].transpose(Image.FLIP_LEFT_RIGHT)
+
+    print("Exporting reverse_proximal_test_part1.gif...")
+    reverse_proximal_part1[0].save("reverse_proximal_test_part1.gif", save_all=True, append_images=reverse_proximal_part1[1:], duration=d_proximal[:398], loop=0, optimize=False)
+    print("Exporting reverse_proximal_test_part2.gif...")
+    reverse_proximal_part2[0].save("reverse_proximal_test_part2.gif", save_all=True, append_images=reverse_proximal_part2[1:], duration=d_proximal[398:], loop=0, optimize=False)
+    print("Exporting reverse_proximal_test_anticipatory_freeze.png...")
+    reverse_proximal_antic.save("reverse_proximal_test_anticipatory_freeze.png")
 
     # Reverse Combo 1: Reverse Distal + Trans + Reverse Proximal
     rc1_frames = reverse_distal_frames + reverse_trans_frames + reverse_proximal_frames
     print("Exporting Reverse_Test_Combo_1.gif...")
-    rc1_frames[0].save("Reverse_Test_Combo_1.gif", save_all=True, append_images=rc1_frames[1:], duration=c1_durations, loop=0)
+    rc1_frames[0].save("Reverse_Test_Combo_1.gif", save_all=True, append_images=rc1_frames[1:], duration=c1_durations, loop=0, optimize=False)
     print("Exporting Reverse_Test_Combo_1_freeze.png...")
     rc1_frames[-1].save("Reverse_Test_Combo_1_freeze.png")
 
     # Reverse Combo 2: Reverse Proximal + Trans + Reverse Distal
     rc2_frames = reverse_proximal_frames + reverse_trans_frames + reverse_distal_frames
     print("Exporting Reverse_Test_Combo_2.gif...")
-    rc2_frames[0].save("Reverse_Test_Combo_2.gif", save_all=True, append_images=rc2_frames[1:], duration=c2_durations, loop=0)
+    rc2_frames[0].save("Reverse_Test_Combo_2.gif", save_all=True, append_images=rc2_frames[1:], duration=c2_durations, loop=0, optimize=False)
     print("Exporting Reverse_Test_Combo_2_freeze.png...")
     rc2_frames[-1].save("Reverse_Test_Combo_2_freeze.png")
 
@@ -325,12 +367,24 @@ if __name__ == "__main__":
     files_to_copy = [
         "distal_test_final.gif",
         "distal_test_final_freeze.png",
+        "distal_test_part1.gif",
+        "distal_test_part2.gif",
+        "distal_test_anticipatory_freeze.png",
         "proximal_test_final.gif",
         "proximal_test_final_freeze.png",
+        "proximal_test_part1.gif",
+        "proximal_test_part2.gif",
+        "proximal_test_anticipatory_freeze.png",
         "reverse_distal_test_final.gif",
         "reverse_distal_test_final_freeze.png",
+        "reverse_distal_test_part1.gif",
+        "reverse_distal_test_part2.gif",
+        "reverse_distal_test_anticipatory_freeze.png",
         "reverse_proximal_test_final.gif",
         "reverse_proximal_test_final_freeze.png",
+        "reverse_proximal_test_part1.gif",
+        "reverse_proximal_test_part2.gif",
+        "reverse_proximal_test_anticipatory_freeze.png",
     ]
     
     if os.path.exists(dest_dir):

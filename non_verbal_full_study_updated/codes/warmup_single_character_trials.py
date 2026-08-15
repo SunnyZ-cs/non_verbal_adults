@@ -317,7 +317,7 @@ def build_warmup(position):
 
     frames = dither(anim.frames)
     out_name = f"warmup_punish_{position}.gif"
-    frames[0].save(out_name, save_all=True, append_images=frames[1:], duration=1000 // FPS, loop=1)
+    frames[0].save(out_name, save_all=True, append_images=frames[1:], duration=1000 // FPS, loop=1, optimize=False)
     dur_ms = len(frames) * (1000 // FPS)
     print(f"{out_name}: {len(frames)} frames, {dur_ms} ms")
     return out_name, dur_ms

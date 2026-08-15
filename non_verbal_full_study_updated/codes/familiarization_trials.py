@@ -684,7 +684,7 @@ class Experiment:
         self.anim.move(mischief, mischief.start_x, mischief.start_y, Timing.MOVE_DURATION)
 
     def save(self, name):
-        self.anim.frames[0].save(name, save_all=True, append_images=self.anim.frames[1:], duration=1000//FPS, loop=0)
+        self.anim.frames[0].save(name, save_all=True, append_images=self.anim.frames[1:], duration=1000//FPS, loop=0, optimize=False)
 
 if __name__ == "__main__":
     # Define 6 distinct agents for familiarization using colors that DO NOT overlap
@@ -713,7 +713,7 @@ if __name__ == "__main__":
             if idx < len(scenes_config) - 1:
                 all_frames.extend(trans.frames)
                 
-        all_frames[0].save(out_filename, save_all=True, append_images=all_frames[1:], duration=1000//FPS, loop=0)
+        all_frames[0].save(out_filename, save_all=True, append_images=all_frames[1:], duration=1000//FPS, loop=0, optimize=False)
         print(f"Exported {out_filename}")
 
     # The 4 baseline scenes and their dedicated pairs
