@@ -13,13 +13,30 @@
 //       freezes for anticipatory looking. The scene then unfolds as
 //       usual (approach + star removal) and ends with the outcome freeze
 //       for post-punishment looking time.
+//   (4) REDESIGN (post second lab meeting, per David): the punishment
+//       sequence for BOTH warmup and test now reads as: bad outcome ->
+//       almost immediately, the large star (angry face + brief shake +
+//       non-directional sound cue), still fully centered -> star settles,
+//       staying angry and centered -> 2-2.5 s anticipatory pause (this is
+//       the anticipatory-looking window; both characters still matched,
+//       nothing indicates direction) -> star moves over and takes the
+//       target's star. The causal event is now shown ONCE (not x3) so
+//       repeated-viewing scan patterns don't carry into the anticipatory
+//       window. In single_cause, the distal/bystander character makes a
+//       small, clearly irrelevant hop-in-place before the proximal
+//       character acts, so it isn't the only character that never moves.
 //
 //  Test trial timeline (recorded as one webcam segment):
-//    bullseye 3.0 s
-//    part1 GIF  (causal event x3, ends with static scene)   ~15.9 s
-//    ANTICIPATORY FREEZE (angry star at center)               3.0 s
-//    part2 GIF  (authority approaches target, removes star)  ~2.9 s
-//    outcome freeze                                           8.0 s
+//    bullseye                                                  3.0 s
+//    part1 GIF  (causal event x1, angry+shake+sound, settles)  5.4 s
+//    ANTICIPATORY FREEZE (angry star, static, centered)        2.5 s
+//    part2 GIF  (authority approaches target, removes star)    2.88 s
+//    outcome freeze                                            8.0 s
+//
+//  Warmup trial timeline (single continuous GIF, ~16.7-17.1 s):
+//    neutral scene -> bad action -> almost-immediate angry+shake+sound
+//    (centered) -> static angry hold (2.5 s) -> authority approaches +
+//    removes star -> final freeze (held via loop=1 last-frame hold).
 //
 //  Paste the contents of this file directly into the
 //  "jsPsych Experiment Code" editor on childrenhelpingscience.com.
@@ -84,11 +101,30 @@ for (let i = warmup_positions.length - 1; i > 0; i--) {
     [warmup_positions[i], warmup_positions[j]] = [warmup_positions[j], warmup_positions[i]];
 }
 const warmup_durations = {
-    left: 13880,
-    center: 13880,
-    right: 13440
+    left: 17120,
+    center: 17120,
+    right: 16680
+};
+// Offset (ms) into each warmup GIF at which the star's brief angry shake
+// begins -- this is when the non-directional sound cue fires.
+const warmup_sound_offset_ms = {
+    left: 7600,
+    center: 7600,
+    right: 7160
 };
 const warmup_gap = 1000;              // blank between warmups
+
+// ── Non-directional sound cue (plays at shake onset, both warmup + test) ──
+const SOUND_URL = BASE + 'punish_cue.mp3';
+function playCue() {
+    try {
+        const a = new Audio(SOUND_URL);
+        a.volume = 1.0;
+        a.play().catch(err => console.warn('Sound cue playback failed:', err));
+    } catch (err) {
+        console.warn('Sound cue error:', err);
+    }
+}
 
 // ── Context / direction / order randomization (unchanged) ──
 const context = Math.random() < 0.5 ? 'chains' : 'single_cause';
@@ -105,10 +141,14 @@ function testFiles(cond) {
     };
 }
 
-// Phase durations (ms). part1/part2 match the exact GIF split points.
-const part1_duration  = 15920;   // causal event x3 + static scene (pre-reveal)
-const antic_duration  = 3000;           // ANTICIPATORY FREEZE: angry star at center
-const part2_duration  = 2840;   // authority approaches target + removes star
+// Phase durations (ms). part1/part2 match the exact GIF split points
+// (both context generators produce identical split/sound frame counts:
+// see chains_timing.json / single_cause_timing.json in materials/).
+const part1_duration  = 5400;    // causal event x1, angry+shake+sound, settles centered
+const test_sound_offset_ms = 4920;      // offset into part1 at which the shake+sound cue begins
+const antic_duration  = 2500;           // ANTICIPATORY FREEZE (David: "2-2.5 s pause"): static
+                                         // angry star, dead-centered, no directional cue
+const part2_duration  = 2880;    // authority approaches target + removes star
 const freeze_duration = 8000;           // outcome freeze (post-punishment looking) -- shortened from
                                          // 20s: window-comparison analyses (report_to_david.md) show
                                          // the unpunished-preference effect is strongest at 0-1s, still
@@ -231,6 +271,9 @@ function buildWarmupPunishTrial(position, index) {
         choices: "NO_KEYS",
         trial_duration: warmup_durations[position],
         post_trial_gap: 0,
+        on_load: function() {
+            setTimeout(playCue, warmup_sound_offset_ms[position]);
+        },
         data: { trial_type: 'warmup_punish', warmup_position: position, warmup_index: index }
     };
 }
@@ -306,6 +349,9 @@ function buildTestTimeline(testObj) {
             fetch(part2_url).catch(err => console.warn('Preload part2 failed:', err));
 
             const el = document.getElementById('test-visual');
+            // Non-directional sound cue, fires when the star's brief angry
+            // shake begins (still inside part1, well before the split).
+            setTimeout(playCue, test_sound_offset_ms);
             // ANTICIPATORY FREEZE: angry star at center, target not yet knowable
             setTimeout(function() { if (el) el.src = antic_url; }, part1_duration);
             // Reveal: authority flies to its target and removes the star

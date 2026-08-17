@@ -1,7 +1,7 @@
 import math
 from PIL import ImageDraw
 from familiarization_trials import (
-    Color, Shape, Expression, Agent, Prop, Renderer, AnimationHelper, 
+    Color, Shape, Expression, Agent, Prop, Renderer, AnimationHelper,
     Timing, FPS, WIDTH, HEIGHT, CENTER_X, AGENT_SIZE, GROUND_Y
 )
 
@@ -24,7 +24,7 @@ def draw_breakable_cube(self, draw: ImageDraw.ImageDraw, cube: BreakableCube):
     base_color = "#868e96"
     hl = "#ced4da"
     crease = "#495057"
-    
+
     if cube.state == "whole":
         # Draw solid block resting on the ground
         left, top, right, bottom = cube.x - size/2, cube.y - size, cube.x + size/2, cube.y
@@ -57,7 +57,7 @@ original_render = Renderer.render
 def extended_render(self, agents, props, ag_scale=None):
     img = original_render(self, agents, props, ag_scale)
     if ag_scale: return img
-    
+
     draw = ImageDraw.Draw(img)
     for p in props:
         if p.type == "breakable_cube":
@@ -67,10 +67,105 @@ def extended_render(self, agents, props, ag_scale=None):
 # Monkey-patch Renderer with our updated render handler
 Renderer.render = extended_render
 
+# ==========================================
+# EYES-ONLY CHARACTERS (star authority keeps its expressions)
+# ==========================================
+# Matches the eyes-only redesign used everywhere else in the study: agents
+# other than "authority" are drawn with eyes only (no mouth/eyebrows).
+
+def eyes_only_draw_face(self, draw, x, y, expression, scale=1.0, eyes_only=False):
+    fc = "#495057"
+    ex_off, ey_top, ey_bot = 10 * scale, 11 * scale, 3 * scale
+    draw.ellipse([x - ex_off, y - ey_top, x - (6 * scale), y - ey_bot], fill=fc)
+    draw.ellipse([x + (6 * scale), y - ey_top, x + ex_off, y - ey_bot], fill=fc)
+    if eyes_only:
+        return
+    if expression == Expression.NEUTRAL:
+        draw.line([x - 6 * scale, y + 7 * scale, x + 6 * scale, y + 7 * scale], fill=fc, width=max(1, int(3 * scale)))
+    elif expression == Expression.HAPPY:
+        draw.arc([x - 8 * scale, y + 2 * scale, x + 8 * scale, y + 13 * scale], 0, 180, fill=fc, width=max(1, int(3 * scale)))
+    elif expression == Expression.SAD:
+        draw.arc([x - 8 * scale, y + 4 * scale, x + 8 * scale, y + 15 * scale], 180, 360, fill=fc, width=max(1, int(3 * scale)))
+    elif expression == Expression.ANGRY:
+        draw.line([x - 14 * scale, y - 17 * scale, x - 4 * scale, y - 11 * scale], fill=fc, width=max(1, int(3 * scale)))
+        draw.line([x + 14 * scale, y - 17 * scale, x + 4 * scale, y - 11 * scale], fill=fc, width=max(1, int(3 * scale)))
+        draw.arc([x - 8 * scale, y + 4 * scale, x + 8 * scale, y + 15 * scale], 180, 360, fill=fc, width=max(1, int(3 * scale)))
+
+
+def eyes_only_draw_agent(self, draw, agent):
+    r = AGENT_SIZE / 2
+    ac = "#495057"
+
+    if agent.shape == Shape.TRIANGLE:
+        root_lx, root_rx = agent.x - r / 2, agent.x + r / 2
+    elif agent.shape == Shape.STAR:
+        root_lx, root_rx = agent.x - 15, agent.x + 15
+    else:
+        root_lx, root_rx = agent.x - r + 8, agent.x + r - 8
+    root_y = agent.y
+    if agent.name == "authority":
+        if agent.arm_target_r:
+            self.draw_wand(draw, root_rx, root_y, agent.arm_target_r[0], agent.arm_target_r[1])
+        else:
+            self.draw_wand(draw, root_rx, root_y, root_rx + 20, root_y - 25)
+        if agent.arm_target_l:
+            draw.line([root_lx, root_y, agent.arm_target_l[0], agent.arm_target_l[1]], fill=ac, width=4)
+        else:
+            draw.line([root_lx, root_y, root_lx - 15, root_y + 20], fill=ac, width=4)
+    else:
+        if agent.arm_target_l:
+            draw.line([root_lx, root_y, agent.arm_target_l[0], agent.arm_target_l[1]], fill=ac, width=4)
+        else:
+            draw.line([root_lx, root_y, root_lx - 15, root_y + 20], fill=ac, width=4)
+        if agent.arm_target_r:
+            draw.line([root_rx, root_y, agent.arm_target_r[0], agent.arm_target_r[1]], fill=ac, width=4)
+        else:
+            draw.line([root_rx, root_y, root_rx + 15, root_y + 20], fill=ac, width=4)
+
+    color = agent.color.value
+    hl = self.get_highlight(color)
+
+    if agent.shape == Shape.CIRCLE:
+        self.draw_sphere_3d(draw, agent.x, agent.y, r, color)
+    elif agent.shape == Shape.SQUARE:
+        draw.rectangle([agent.x - r, agent.y - r, agent.x + r, agent.y + r], fill=color)
+        draw.polygon([(agent.x - r, agent.y - r), (agent.x, agent.y - r), (agent.x - r * 0.2, agent.y - r * 0.2), (agent.x - r, agent.y)], fill=hl)
+    elif agent.shape == Shape.TRIANGLE:
+        draw.polygon([(agent.x - r, agent.y + r), (agent.x + r, agent.y + r), (agent.x, agent.y - r)], fill=color)
+        draw.polygon([(agent.x, agent.y - r), (agent.x - r, agent.y + r), (agent.x - r * 0.6, agent.y + r * 0.8), (agent.x - r * 0.1, agent.y - r * 0.6)], fill=hl)
+    elif agent.shape == Shape.STAR:
+        self.draw_star(draw, agent.x, agent.y, r * 1.5 if agent.name == "authority" else r, color)
+
+    face_y = agent.y + (12 if agent.shape == Shape.TRIANGLE else 0)
+    f_scale = 0.75 if agent.shape == Shape.STAR else 1.0
+    eyes_only = (agent.name != "authority")
+    self.draw_face(draw, agent.x, face_y, agent.expression, scale=f_scale, eyes_only=eyes_only)
+    if agent.has_star:
+        self.draw_star(draw, agent.x, agent.y - r - 25)
+
+
+Renderer.draw_face = eyes_only_draw_face
+Renderer.draw_agent = eyes_only_draw_agent
+
 
 # ==========================================
 # EXPERIMENT ORCHESTRATOR
 # ==========================================
+
+# Anticipatory-cue timing constants -- kept identical to the chains script so
+# both contexts share one JS-side antic_duration/part1_duration pair.
+POST_BREAK_PAUSE = 0.15
+PRE_SHAKE_PAUSE = 0.3
+SHAKE_DURATION = 0.48
+
+# Bystander hop (single-cause only): the distal/bystander agent makes a
+# small, clearly irrelevant hop-in-place, temporally separated from the
+# proximal agent's action, so it isn't the only character that has done
+# nothing at all. It happens BEFORE the proximal agent moves and does not
+# touch the proximal agent or the cube.
+HOP_PRE_PAUSE = 0.3
+HOP_POST_PAUSE = 0.3
+
 
 class TestTrialsExperiment:
     def __init__(self, c1_dict, c2_dict):
@@ -78,33 +173,42 @@ class TestTrialsExperiment:
         self.agent1 = Agent("Agent1", c1_dict["shape"], c1_dict["color"], 160, 227)
         self.agent2 = Agent("Agent2", c2_dict["shape"], c2_dict["color"], CENTER_X, 227)
         self.authority = Agent("authority", Shape.STAR, Color.YELLOW, CENTER_X, 60)
-        
+
         # Place cube on right
         self.cube = BreakableCube(WIDTH - 100, GROUND_Y)
-        
+
         self.props = [self.cube]
         self.anim = AnimationHelper(self.r, [self.agent1, self.agent2, self.authority], self.props)
+        self.split_frame = None
+        self.sound_frame = None
 
     def reset_state(self):
         self.agent1.x, self.agent1.y = 160, 227
         self.agent2.x, self.agent2.y = CENTER_X, 227
-        
+
         self.agent1.expression = Expression.NEUTRAL
         self.agent2.expression = Expression.NEUTRAL
         self.authority.expression = Expression.NEUTRAL
-        
+
         self.cube.state = "whole"
         self.cube.fragments = []
         self.cube.visible = True
 
     def run_chain(self):
-        # 1. Agent 1 (distal cause) does nothing, pause for 9/FPS seconds to keep frame alignment
-        self.anim.pause(9 / FPS)
-        
+        # 1. Agent 1 (distal/bystander) makes a small, clearly irrelevant
+        # hop in place -- temporally separated (pauses on both sides) from
+        # the proximal agent's action, and does not touch Agent 2 or the
+        # cube. This establishes it isn't simply inert, while keeping the
+        # critical difference "part of the causal chain or not" rather than
+        # "moved or not".
+        self.anim.pause(HOP_PRE_PAUSE)
+        self.anim.jump(self.agent1)
+        self.anim.pause(HOP_POST_PAUSE)
+
         # 2. Agent 2 (proximal cause) directly hits the Cube
         stop_x_2 = WIDTH - 100 - AGENT_SIZE + 5
         self.anim.move(self.agent2, stop_x_2, 227, 0.35) # direct hit
-        
+
         # 3. Cube Breaks Instantly!
         self.cube.state = "broken"
         cx = WIDTH - 100
@@ -120,7 +224,7 @@ class TestTrialsExperiment:
             (cx, 265, 4, -2, 60),
             (cx+20, 260, 11, -9, -90)
         ]
-        
+
         # 4. Resolve Ballistic Shards
         gravity = 1.5
         active = True
@@ -133,102 +237,117 @@ class TestTrialsExperiment:
                 nfy = fy + dy
                 ndy = dy + gravity
                 nrot = rot + dx * 3 # spin naturally
-                
+
                 # Ground bounce collision (fs/2 is roughly 11 radius)
                 bound_y = GROUND_Y - 11
                 if nfy >= bound_y:
                     nfy = bound_y
                     ndy = 0          # Hard THUD, no vertical bouncing to eliminate jitter
                     dx = dx * 0.8   # Friction slide smoothly
-                    
+
                     if abs(dx) < 0.5: dx = 0
-                
+
                 if ndy != 0 or dx != 0:
                     active = True
-                    
+
                 new_frags.append((nfx, nfy, dx, ndy, nrot))
             self.cube.fragments = new_frags
             self.anim.snap()
             frame_count += 1
-            
-        self.anim.pause(1.5)
-        
-    def punish(self, target_agent):
+
+        # Cue starts almost immediately after the block breaks.
+        self.anim.pause(POST_BREAK_PAUSE)
+
+    def anticipatory_cue(self):
+        """Star stays centered: goes angry, briefly shakes (sound cue fires
+        at shake onset), then holds still -- angry and centered -- which is
+        exactly where part1 ends (the anticipatory-freeze PNG is the last
+        frame of this)."""
+        self.anim.pause(PRE_SHAKE_PAUSE)
+        self.sound_frame = len(self.anim.frames)
         self.authority.expression = Expression.ANGRY
-        # 1. Authority descends above target at proper distance
+        start_gx = self.authority.x
+        shake_frames = int(SHAKE_DURATION * FPS)
+        for i in range(shake_frames):
+            self.authority.x = start_gx + 4 * math.sin(i * 1.8)
+            self.anim.snap()
+        self.authority.x = start_gx
+        self.split_frame = len(self.anim.frames)
+
+    def reveal_and_punish(self, target_agent):
+        # authority is already angry-faced and centered -- it only needs to
+        # move in and take the star.
         self.anim.move(self.authority, target_agent.x, target_agent.y - 140, Timing.MOVE_DURATION)
-        
-        # 2. Authority uses Magic Wand to interact with the star
+
         star_x, star_y = target_agent.x, target_agent.y - (AGENT_SIZE/2) - 25
         self.authority.arm_target_r = (star_x, star_y)
         self.anim.pause(0.2) # Contact pause
-        
-        # 3. Shake/Struggle logic (matching familiarization style but keeping tension)
+
+        # Shake/Struggle logic (matching familiarization style but keeping tension)
         start_gx = self.authority.x
         for i in range(25):
-            # Jitter the star and the wand tip slightly
             off = 5 * math.sin(i * 1.5)
             self.authority.x = start_gx + off
             target_agent.expression = Expression.SAD
             self.authority.arm_target_r = (star_x + off, star_y)
             self.anim.snap()
-            
+
         self.authority.x = start_gx
-        
+
         # FIERCE SNAP: Transfer Star
         target_agent.has_star = False
         target_agent.expression = Expression.SAD
         self.authority.has_star = False # Star vanishes from screen completely!
-        
+
         # Retract wand to resting pose
         self.authority.arm_target_r = None
-        self.anim.pause(0.5) 
+        self.anim.pause(0.5)
 
     def build_test_loop(self, target_agent, filename):
         self.agent1.has_star = True
         self.agent2.has_star = True
         self.reset_state()
-        
+
         self.anim.pause(2.0) # Introduce initial scene with stars calmly
-        
-        # 3x Loop Iteration for Causal Chains
-        for i in range(3):
-            self.run_chain()
-            
-            # If not the last run, blank the screen to reset for next iteration
-            if i < 2:
-                self.anim.blank(Timing.TRANSITION_BLANK)
-                self.reset_state()
-                self.anim.pause(1.0) # Wait a second after resetting to show whole cube again
-                
-        # After runs, punish the designated agent
-        self.punish(target_agent)
-        
+
+        # Causal event shown ONCE (not repeated).
+        self.run_chain()
+
+        # Centered angry+shake+sound cue, ending angry+centered at the
+        # part1/anticipatory-freeze boundary.
+        self.anticipatory_cue()
+
+        # Punish the designated agent (part2).
+        self.reveal_and_punish(target_agent)
+
         # Finalize and Output
         print(f"Exporting {filename}...")
-        
+
         durations = [1000//FPS] * len(self.anim.frames)
-        
+        durations[-1] = 10000
+
         self.anim.frames[0].save(filename, save_all=True, append_images=self.anim.frames[1:], duration=durations, loop=0, optimize=False)
-        
+
         png_filename = filename.replace('.gif', '_freeze.png')
         print(f"Exporting {png_filename}...")
         self.anim.frames[-1].save(png_filename)
 
-        # Generate and save part1, part2, and anticipatory freeze
-        part1_frames = self.anim.frames[0:398]
-        part2_frames = self.anim.frames[398:]
-        antic_freeze = self.anim.frames[397]
+        # Generate and save part1, part2, and anticipatory freeze (split
+        # dynamically at self.split_frame, computed by anticipatory_cue()).
+        sf = self.split_frame
+        part1_frames = self.anim.frames[0:sf]
+        part2_frames = self.anim.frames[sf:]
+        antic_freeze = self.anim.frames[sf - 1]
 
         part1_filename = filename.replace('_final.gif', '_part1.gif')
         part2_filename = filename.replace('_final.gif', '_part2.gif')
         antic_filename = filename.replace('_final.gif', '_anticipatory_freeze.png')
 
-        print(f"Exporting {part1_filename}...")
-        part1_frames[0].save(part1_filename, save_all=True, append_images=part1_frames[1:], duration=durations[:398], loop=0, optimize=False)
+        print(f"Exporting {part1_filename}... ({len(part1_frames)} frames, sound cue at frame {self.sound_frame})")
+        part1_frames[0].save(part1_filename, save_all=True, append_images=part1_frames[1:], duration=durations[:sf], loop=0, optimize=False)
 
-        print(f"Exporting {part2_filename}...")
-        part2_frames[0].save(part2_filename, save_all=True, append_images=part2_frames[1:], duration=durations[398:], loop=0, optimize=False)
+        print(f"Exporting {part2_filename}... ({len(part2_frames)} frames)")
+        part2_frames[0].save(part2_filename, save_all=True, append_images=part2_frames[1:], duration=durations[sf:], loop=0, optimize=False)
 
         print(f"Exporting {antic_filename}...")
         antic_freeze.save(antic_filename)
@@ -238,6 +357,7 @@ if __name__ == "__main__":
     from PIL import Image
     import shutil
     import os
+    import json
 
     # E = Teal Triangle, F = Red Square, G = Brown Circle, H = Blue Square
     E = {"shape": Shape.TRIANGLE, "color": Color.TEAL}
@@ -248,19 +368,29 @@ if __name__ == "__main__":
     # ==========================
     # 1. Distal Role Focus Test
     # ==========================
-    # Setup: E on Left, F in Middle. 
+    # Setup: E on Left, F in Middle.
     # Green punishes E (Agent1)
     distal_exp = TestTrialsExperiment(E, F)
     distal_exp.build_test_loop(target_agent=distal_exp.agent1, filename="distal_test_final.gif")
-    
+
     # ==========================
     # 2. Proximal Role Focus Test
     # ==========================
-    # Setup: G on Left, H in Middle. 
+    # Setup: G on Left, H in Middle.
     # Green punishes H (Agent2)
     proximal_exp = TestTrialsExperiment(G, H)
     proximal_exp.build_test_loop(target_agent=proximal_exp.agent2, filename="proximal_test_final.gif")
-    
+
+    timing_info = {
+        "distal": {"split_frame": distal_exp.split_frame, "sound_frame": distal_exp.sound_frame,
+                    "part1_ms": distal_exp.split_frame * (1000 // FPS),
+                    "sound_ms": distal_exp.sound_frame * (1000 // FPS)},
+        "proximal": {"split_frame": proximal_exp.split_frame, "sound_frame": proximal_exp.sound_frame,
+                      "part1_ms": proximal_exp.split_frame * (1000 // FPS),
+                      "sound_ms": proximal_exp.sound_frame * (1000 // FPS)},
+    }
+    print("Single-cause timing:", json.dumps(timing_info, indent=2))
+
     # ==========================
     # COMBO GENERATION (Original)
     # ==========================
@@ -271,16 +401,18 @@ if __name__ == "__main__":
 
     # Durations mapping
     d_distal = [1000//FPS] * len(distal_exp.anim.frames)
+    d_distal[-1] = 10000
     d_proximal = [1000//FPS] * len(proximal_exp.anim.frames)
+    d_proximal[-1] = 10000
     d_trans = [1000//FPS] * len(trans.frames)
 
     # Test combo 1: Distal_Test_Final + Trans + Proximal_Test_Final
     c1_frames = distal_exp.anim.frames + trans.frames + proximal_exp.anim.frames
     c1_durations = d_distal + d_trans + d_proximal
-    
+
     print("Exporting Test_Combo_1.gif...")
     c1_frames[0].save("Test_Combo_1.gif", save_all=True, append_images=c1_frames[1:], duration=c1_durations, loop=0, optimize=False)
-    
+
     c1_png_filename = "Test_Combo_1_freeze.png"
     print(f"Exporting {c1_png_filename}...")
     c1_frames[-1].save(c1_png_filename)
@@ -288,10 +420,10 @@ if __name__ == "__main__":
     # Test combo 2: Proximal_Test_Final + Trans + Distal_Test_Final
     c2_frames = proximal_exp.anim.frames + trans.frames + distal_exp.anim.frames
     c2_durations = d_proximal + d_trans + d_distal
-    
+
     print("Exporting Test_Combo_2.gif...")
     c2_frames[0].save("Test_Combo_2.gif", save_all=True, append_images=c2_frames[1:], duration=c2_durations, loop=0, optimize=False)
-    
+
     c2_png_filename = "Test_Combo_2_freeze.png"
     print(f"Exporting {c2_png_filename}...")
     c2_frames[-1].save(c2_png_filename)
@@ -312,15 +444,16 @@ if __name__ == "__main__":
     print("Exporting reverse_distal_test_final_freeze.png...")
     reverse_distal_frames[-1].save("reverse_distal_test_final_freeze.png")
 
-    # Save reverse distal test parts
-    reverse_distal_part1 = get_reversed_frames(distal_exp.anim.frames[0:398])
-    reverse_distal_part2 = get_reversed_frames(distal_exp.anim.frames[398:])
-    reverse_distal_antic = distal_exp.anim.frames[397].transpose(Image.FLIP_LEFT_RIGHT)
+    # Save reverse distal test parts (dynamic split point)
+    sf_d = distal_exp.split_frame
+    reverse_distal_part1 = get_reversed_frames(distal_exp.anim.frames[0:sf_d])
+    reverse_distal_part2 = get_reversed_frames(distal_exp.anim.frames[sf_d:])
+    reverse_distal_antic = distal_exp.anim.frames[sf_d - 1].transpose(Image.FLIP_LEFT_RIGHT)
 
     print("Exporting reverse_distal_test_part1.gif...")
-    reverse_distal_part1[0].save("reverse_distal_test_part1.gif", save_all=True, append_images=reverse_distal_part1[1:], duration=d_distal[:398], loop=0, optimize=False)
+    reverse_distal_part1[0].save("reverse_distal_test_part1.gif", save_all=True, append_images=reverse_distal_part1[1:], duration=d_distal[:sf_d], loop=0, optimize=False)
     print("Exporting reverse_distal_test_part2.gif...")
-    reverse_distal_part2[0].save("reverse_distal_test_part2.gif", save_all=True, append_images=reverse_distal_part2[1:], duration=d_distal[398:], loop=0, optimize=False)
+    reverse_distal_part2[0].save("reverse_distal_test_part2.gif", save_all=True, append_images=reverse_distal_part2[1:], duration=d_distal[sf_d:], loop=0, optimize=False)
     print("Exporting reverse_distal_test_anticipatory_freeze.png...")
     reverse_distal_antic.save("reverse_distal_test_anticipatory_freeze.png")
 
@@ -330,15 +463,16 @@ if __name__ == "__main__":
     print("Exporting reverse_proximal_test_final_freeze.png...")
     reverse_proximal_frames[-1].save("reverse_proximal_test_final_freeze.png")
 
-    # Save reverse proximal test parts
-    reverse_proximal_part1 = get_reversed_frames(proximal_exp.anim.frames[0:398])
-    reverse_proximal_part2 = get_reversed_frames(proximal_exp.anim.frames[398:])
-    reverse_proximal_antic = proximal_exp.anim.frames[397].transpose(Image.FLIP_LEFT_RIGHT)
+    # Save reverse proximal test parts (dynamic split point)
+    sf_p = proximal_exp.split_frame
+    reverse_proximal_part1 = get_reversed_frames(proximal_exp.anim.frames[0:sf_p])
+    reverse_proximal_part2 = get_reversed_frames(proximal_exp.anim.frames[sf_p:])
+    reverse_proximal_antic = proximal_exp.anim.frames[sf_p - 1].transpose(Image.FLIP_LEFT_RIGHT)
 
     print("Exporting reverse_proximal_test_part1.gif...")
-    reverse_proximal_part1[0].save("reverse_proximal_test_part1.gif", save_all=True, append_images=reverse_proximal_part1[1:], duration=d_proximal[:398], loop=0, optimize=False)
+    reverse_proximal_part1[0].save("reverse_proximal_test_part1.gif", save_all=True, append_images=reverse_proximal_part1[1:], duration=d_proximal[:sf_p], loop=0, optimize=False)
     print("Exporting reverse_proximal_test_part2.gif...")
-    reverse_proximal_part2[0].save("reverse_proximal_test_part2.gif", save_all=True, append_images=reverse_proximal_part2[1:], duration=d_proximal[398:], loop=0, optimize=False)
+    reverse_proximal_part2[0].save("reverse_proximal_test_part2.gif", save_all=True, append_images=reverse_proximal_part2[1:], duration=d_proximal[sf_p:], loop=0, optimize=False)
     print("Exporting reverse_proximal_test_anticipatory_freeze.png...")
     reverse_proximal_antic.save("reverse_proximal_test_anticipatory_freeze.png")
 
@@ -382,7 +516,7 @@ if __name__ == "__main__":
         "reverse_proximal_test_part2.gif",
         "reverse_proximal_test_anticipatory_freeze.png",
     ]
-    
+
     if os.path.exists(dest_dir):
         print(f"Copying files to materials directory with single_cause prefix: {dest_dir}")
         for f in files_to_copy:
@@ -390,6 +524,7 @@ if __name__ == "__main__":
                 dest_filename = f"single_cause_{f}"
                 shutil.copy(f, os.path.join(dest_dir, dest_filename))
                 print(f"  Copied {f} -> {dest_filename}")
+        with open(os.path.join(dest_dir, "single_cause_timing.json"), "w") as fh:
+            json.dump(timing_info, fh, indent=2)
     else:
         print(f"Destination directory {dest_dir} does not exist.")
-

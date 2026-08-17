@@ -3,15 +3,18 @@ process_icatcher_sherlock.py
 
 GPU/Sherlock-array-friendly version of process_icatcher.py.
 
-REVISED-DESIGN TIMING (post lab meeting; freeze shortened from 20.0 -> 8.0s
-after window-comparison analyses showed the effect concentrated in the first
-few seconds and away-looking rising later in the window):
-  bullseye 3.0 | part1 15.92 | ANTICIPATORY FREEZE 3.0 | part2 2.84 | outcome freeze 8.0
-  -> outcome freeze starts 24.76 s into the recording (the ffmpeg crop point below;
+REVISED-DESIGN TIMING (post SECOND lab meeting, per David's anticipation-cue
+redesign: causal event now shown once instead of x3, and the star's
+angry+shake+sound cue happens almost immediately after the bad outcome,
+still fully centered, before the 2-2.5s anticipatory pause):
+  bullseye 3.0 | part1 5.4 | ANTICIPATORY FREEZE 2.5 | part2 2.88 | outcome freeze 8.0
+  -> outcome freeze starts 13.78 s into the recording (the ffmpeg crop point below;
      unaffected by the freeze-duration change, since it only depends on
      bullseye + part1 + anticipatory freeze + part2).
-  -> anticipatory window = 18.92-21.92 s of the recording; analyze it from the
+  -> anticipatory window = 8.4-10.9 s of the recording; analyze it from the
      full-video pass (process_icatcher_full.py + run_icatcher_full_array.sbatch).
+  -> sound cue fires 4.92 s into part1 (i.e. 7.92 s into the recording), well
+     before the anticipatory window itself.
 
 What changed vs. the original pilot_kids_version/process_icatcher.py:
   1. --gpu_id is now a CLI flag (default 0 = first GPU on the node) instead of
@@ -91,7 +94,7 @@ def run_icatcher(video_path, output_dir, gpu_id):
         return None
 
 
-def analyze_gaze(icatcher_output_file, freeze_duration=8.0, anim_duration=21.76, bullseye_duration=3.0):
+def analyze_gaze(icatcher_output_file, freeze_duration=8.0, anim_duration=10.78, bullseye_duration=3.0):
     if not icatcher_output_file:
         return 0, 0, 0
 
@@ -182,7 +185,7 @@ def parse_video_filename(filename):
 def prepare_videos(videos_dir, target_uuid=None):
     """
     Finds non-consent webm/mp4 videos (optionally filtered to one participant
-    uuid), converts webm -> mp4 (cropped to start at 24.76s into the
+    uuid), converts webm -> mp4 (cropped to start at 13.78s into the
     recording, i.e. the outcome-freeze onset -- currently an ~8s clip, see
     REVISED-DESIGN TIMING above), and returns the prepared list plus a temp
     dir unique to this process for cleanup.
@@ -214,7 +217,7 @@ def prepare_videos(videos_dir, target_uuid=None):
             # (no --enable-gpl in that build), so we use ffmpeg's built-in
             # mpeg4 encoder instead, which needs no external library.
             cmd = [
-                "ffmpeg", "-y", "-ss", "24.76", "-i", webm,
+                "ffmpeg", "-y", "-ss", "13.78", "-i", webm,
                 "-an", "-c:v", "mpeg4", "-q:v", "3", "-pix_fmt", "yuv420p",
                 mp4_path,
             ]
@@ -347,7 +350,7 @@ def main():
     parser.add_argument("--out", default=None, help="Path to write this run's summary CSV. Defaults to results/icatcher_summary_<uuid|all>.csv")
     parser.add_argument("--workers", default=1, type=int, help="Parallel video workers within this run (default 1; keep low on a single shared GPU).")
     parser.add_argument("--freeze_duration", default=8.0, type=float, help="Seconds of the trial's final freeze-frame window that gaze is scored over (default 8.0, matches this study's design -- shortened from an earlier 20.0s after window-comparison analyses showed the effect is concentrated in the first few seconds and away-looking rises later in the window).")
-    parser.add_argument("--anim_duration", default=21.76, type=float, help="Seconds between bullseye end and outcome-freeze onset (default 21.76 = part1 15.92 + anticipatory freeze 3.0 + part2 2.84 in the revised design). Only affects how many trailing frames get kept when a video has more than 650 total frames - see analyze_gaze().")
+    parser.add_argument("--anim_duration", default=10.78, type=float, help="Seconds between bullseye end and outcome-freeze onset (default 10.78 = part1 5.4 + anticipatory freeze 2.5 + part2 2.88 in the revised design). Only affects how many trailing frames get kept when a video has more than 650 total frames - see analyze_gaze().")
     parser.add_argument("--bullseye_duration", default=3.0, type=float, help="Seconds of the attention-getter/bullseye at the very start of the clip (default 3.0).")
     args = parser.parse_args()
 

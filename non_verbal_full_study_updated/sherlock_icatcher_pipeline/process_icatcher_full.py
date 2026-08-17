@@ -2,9 +2,9 @@
 process_icatcher_full.py
 
 UNCROPPED variant of process_icatcher_sherlock.py: converts each webm to mp4
-WITHOUT the -ss 24.76 crop, so iCatcher+ annotates the FULL recording
-(pre-bullseye lag + 3s bullseye + 21.76s animation [part1 15.92 + anticipatory
-freeze 3.0 + part2 2.84] + 8s outcome freeze).
+WITHOUT the -ss 13.78 crop, so iCatcher+ annotates the FULL recording
+(pre-bullseye lag + 3s bullseye + 10.78s animation [part1 5.4 + anticipatory
+freeze 2.5 + part2 2.88] + 8s outcome freeze).
 
 Only produces per-frame annotation txts (in icatcher_output_full/) - no
 summary CSV needed; the anticipatory-window analysis consumes the raw txts.

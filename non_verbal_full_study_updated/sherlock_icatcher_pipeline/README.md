@@ -231,7 +231,7 @@ accidentally "simplify" one of these back into a bug:
 `process_icatcher_sherlock.py` has CLI flags for the trial timing
 (`--freeze_duration`, `--anim_duration`, `--bullseye_duration`) in case a
 future version of the study changes clip length - defaults match this
-study's current design (3s bullseye + 21.76s animation + 8s freeze). The
+study's current design (3s bullseye + 10.78s animation + 8s freeze). The
 filename-parsing regex assumes Lookit's standard export naming convention
 (`videoStream_..._<frame>-start-record-plugin-multiframe_<uuid>_...`) and
 `frame_idx == 9` / `frame_idx == 13` mapping to the two trial conditions -
@@ -239,28 +239,46 @@ if the study's trial structure changes, `parse_video_filename()` and the
 condition-assignment logic in `process_single_video()` are the two places
 to update.
 
-## Revised design (post lab meeting) — timing cheat sheet
+## Revised design (post SECOND lab meeting, David's anticipation-cue redesign) — timing cheat sheet
+
+Per David: for both warmup and test, the punishment sequence now reads as
+bad outcome -> almost immediately, the star (angry face + brief shake +
+non-directional sound cue), still fully centered -> star settles, staying
+angry and centered -> 2-2.5s anticipatory pause (the anticipatory-looking
+window; both characters still matched, nothing indicates direction) -> star
+moves over and takes the target's star. The causal event is now shown ONCE
+(not ×3), so a repeated-viewing scan pattern can't carry into the
+anticipatory window. In single_cause, the distal/bystander character makes a
+small, clearly irrelevant hop-in-place before the proximal character acts.
 
 Test-trial recording timeline (one webcam segment per test trial):
 
 | phase | starts at | duration |
 |---|---|---|
 | bullseye | 0.00 s | 3.00 s |
-| part1 (causal event ×3 + static scene) | 3.00 s | 15.92 s |
-| **anticipatory freeze** (angry star at center; target unknowable) | 18.92 s | 3.00 s |
-| part2 (authority approaches target, removes star) | 21.92 s | 2.84 s |
-| outcome freeze (post-punishment looking) | 24.76 s | 8.00 s |
+| part1 (causal event ×1, angry+shake+sound, settles centered) | 3.00 s | 5.40 s |
+| **anticipatory freeze** (angry star, static, centered; target unknowable) | 8.40 s | 2.50 s |
+| part2 (authority approaches target, removes star) | 10.90 s | 2.88 s |
+| outcome freeze (post-punishment looking) | 13.78 s | 8.00 s |
 
-Total recording length per test trial: ~32.76 s (was ~44.76 s before the
-outcome freeze was shortened from 20s to 8s — window-comparison analyses on
-batch3 showed the unpunished-preference effect is strongest at 0-1s, still
-present at 1-3s, and only weakens (not gains new signal) after that, while
-away-looking roughly doubles [9-12% -> 20-21%] over the later part of the
-old 20s window; see `report_to_david.md`).
+The non-directional sound cue fires **4.92 s into part1** (7.92 s into the
+recording), at the onset of the star's brief shake.
 
-- `process_icatcher_sherlock.py` crops at **24.76 s** and scores the outcome freeze (unchanged crop point -- only the freeze's length after that point got shorter).
-- For the **anticipatory window (18.92–21.92 s)** run the full-video pass:
+Total recording length per test trial: ~21.78 s (down from ~32.76 s under
+the first-round redesign, mainly from dropping the causal-event repeat and
+tightening the pre-cue gap; the outcome freeze itself is unchanged at 8s
+-- shortened from 20s in the first round after window-comparison analyses
+showed the unpunished-preference effect concentrated in the first few
+seconds and away-looking rising later in the window; see
+`report_to_david.md`).
+
+- `process_icatcher_sherlock.py` crops at **13.78 s** and scores the outcome freeze.
+- For the **anticipatory window (8.40–10.90 s)** run the full-video pass:
   `sbatch --array=0-N run_icatcher_full_array.sbatch` (annotates uncropped videos into `icatcher_output_full/`).
 - Warmup phase: three punishment-only warmups (single pink-circle character at left/center/right, order randomized).
   The order is recorded in the session JSON (`randomization_info.warmup_order` and per-trial `warmup_position`).
+  Each warmup GIF now runs the same redesigned punishment sequence (immediate
+  angry+shake+sound, 2.5s static angry hold, then approach+removal) and is
+  ~16.7-17.1s long (was ~13.4-13.9s under the first-round redesign).
 - All characters are rendered with eyes only (no mouths/expressions); the star authority keeps its expressions.
+- Exact per-clip split/sound-cue frame numbers live in `materials/chains_timing.json`, `materials/single_cause_timing.json`, and `materials/warmup_timing.json`.

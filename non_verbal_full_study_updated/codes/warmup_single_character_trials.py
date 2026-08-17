@@ -105,8 +105,38 @@ def setup_scene(scene_name, scene_x, props):
     return center_prop
 
 
-def give_punishment(anim, mischief, authority):
+# Anticipatory-cue timing constants (David's post-lab-meeting spec):
+#   very shortly after the outcome -> brief angry+shake+sound, centered
+#   -> star stops shaking, stays angry+centered -> 2-2.5s pause (the MAIN
+#   anticipatory-looking window) -> THEN move over and take the star.
+PRE_SHAKE_PAUSE = 0.3     # "very shortly after the outcome"
+SHAKE_DURATION = 0.48     # "briefly shakes" (12 frames @ 25fps)
+ANTICIPATORY_PAUSE = 2.5  # main anticipatory-looking window (2-2.5s range, upper bound)
+
+
+def anticipatory_cue(anim, authority):
+    """Star stays put at its home/centered position (CENTER_X, 60): goes
+    angry, briefly shakes (sound cue fires at shake onset), then holds
+    still -- angry and centered -- for ANTICIPATORY_PAUSE seconds. Returns
+    the frame index at which the shake (and sound cue) begins, so the
+    caller can compute the matching ms offset for the JS audio trigger.
+    """
+    anim.pause(PRE_SHAKE_PAUSE)
+    sound_cue_frame = len(anim.frames)
     authority.expression = Expression.ANGRY
+    start_gx = authority.x
+    shake_frames = int(SHAKE_DURATION * FPS)
+    for i in range(shake_frames):
+        authority.x = start_gx + 4 * math.sin(i * 1.8)
+        anim.snap()
+    authority.x = start_gx
+    anim.pause(ANTICIPATORY_PAUSE)
+    return sound_cue_frame
+
+
+def give_punishment(anim, mischief, authority):
+    # authority is already angry-faced and centered (anticipatory_cue() ran
+    # just before this), so it only needs to move in and take the star.
     anim.move(authority, mischief.x, mischief.y - 140, Timing.MOVE_DURATION)
     authority.arm_target_r = (mischief.x, mischief.y - (AGENT_SIZE / 2) - 25)
     start_gx = authority.x
@@ -179,9 +209,11 @@ def trash_punish_phase(anim, props, center_prop, mischief, authority, scene_x):
 
     mischief.arm_target_l = mischief.arm_target_r = None
 
+    sound_frame = anticipatory_cue(anim, authority)
     give_punishment(anim, mischief, authority)
     if trash in props:
         props.remove(trash)
+    return sound_frame
 
 
 def tower_punish_phase(anim, props, center_prop, mischief, authority, scene_x):
@@ -235,9 +267,11 @@ def tower_punish_phase(anim, props, center_prop, mischief, authority, scene_x):
 
     mischief.arm_target_l = mischief.arm_target_r = None
 
+    sound_frame = anticipatory_cue(anim, authority)
     give_punishment(anim, mischief, authority)
     if block in props:
         props.remove(block)
+    return sound_frame
 
 
 def flower_punish_phase(anim, props, center_prop, mischief, authority, scene_x):
@@ -256,7 +290,9 @@ def flower_punish_phase(anim, props, center_prop, mischief, authority, scene_x):
     return_x = mischief.start_x   # punish-moment position == start/home position
     anim.move(mischief, return_x, 227, Timing.MOVE_DURATION)
 
+    sound_frame = anticipatory_cue(anim, authority)
     give_punishment(anim, mischief, authority)
+    return sound_frame
 
 
 def dither(frames):
@@ -307,11 +343,11 @@ def build_warmup(position):
     anim.pause(1.0)
 
     if scene_name == "trash":
-        trash_punish_phase(anim, props, center_prop, mischief, authority, scene_x)
+        sound_frame = trash_punish_phase(anim, props, center_prop, mischief, authority, scene_x)
     elif scene_name == "tower":
-        tower_punish_phase(anim, props, center_prop, mischief, authority, scene_x)
+        sound_frame = tower_punish_phase(anim, props, center_prop, mischief, authority, scene_x)
     elif scene_name == "flower":
-        flower_punish_phase(anim, props, center_prop, mischief, authority, scene_x)
+        sound_frame = flower_punish_phase(anim, props, center_prop, mischief, authority, scene_x)
 
     anim.pause(1.0)
 
@@ -319,18 +355,22 @@ def build_warmup(position):
     out_name = f"warmup_punish_{position}.gif"
     frames[0].save(out_name, save_all=True, append_images=frames[1:], duration=1000 // FPS, loop=1, optimize=False)
     dur_ms = len(frames) * (1000 // FPS)
-    print(f"{out_name}: {len(frames)} frames, {dur_ms} ms")
-    return out_name, dur_ms
+    sound_ms = sound_frame * (1000 // FPS)
+    print(f"{out_name}: {len(frames)} frames, {dur_ms} ms; sound cue at frame {sound_frame} = {sound_ms} ms")
+    return out_name, dur_ms, sound_ms
 
 
 if __name__ == "__main__":
     import os
     import shutil
+    import json
 
     total = {}
+    sound_offsets = {}
     for pos in ["left", "center", "right"]:
-        name, dur = build_warmup(pos)
+        name, dur, sound_ms = build_warmup(pos)
         total[pos] = dur
+        sound_offsets[pos] = sound_ms
 
     dest_dir = "../materials/"
     if os.path.exists(dest_dir):
@@ -338,5 +378,9 @@ if __name__ == "__main__":
             fn = f"warmup_punish_{pos}.gif"
             shutil.copy(fn, os.path.join(dest_dir, fn))
             print(f"  Copied {fn} -> {dest_dir}")
+        with open(os.path.join(dest_dir, "warmup_timing.json"), "w") as fh:
+            json.dump({"durations_ms": total, "sound_cue_offset_ms": sound_offsets}, fh, indent=2)
+        print("  Wrote warmup_timing.json")
 
     print("Durations (ms):", total)
+    print("Sound cue offsets (ms):", sound_offsets)
