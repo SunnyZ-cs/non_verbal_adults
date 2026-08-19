@@ -4,6 +4,8 @@ This directory contains the Python scripts used to generate and reproduce all th
 
 All animations use the bubbly/glossy 3D visual style (with sphere highlights, gradient shading, and custom facial expressions) and feature the yellow star "authority" character carrying out star yanks using a magic wand.
 
+**Anticipatory-cue shake mechanics (post-David-feedback revision):** the star's brief angry shake (the moment the sound cue fires, in `anticipatory_cue()` in all three of `warmup_single_character_trials.py`, `generate_causal_chains_test_trials.py`, and `generate_single_cause_test_trials.py`) is a **rotation-only wobble** of the star's points around its own center (`Agent.shake_rotation`, consumed by `Renderer.draw_star`'s `rotation` argument) -- the star's x/y position is never touched during the shake, so it never visibly shifts. All three scripts use the identical `SHAKE_ROTATION_AMPLITUDE = 0.14` (radians) and phase step, so the shake looks the same in warmup and test. The test-trial scripts also now call `dither()` (the same frame-collapse fix warmup already used) once on the full animation before any GIF is saved, so Pillow can no longer silently merge near-identical shake frames -- test-trial shakes now render every frame, same as warmup. Note: the *separate*, later shake during star removal (`give_punishment()` / `reveal_and_punish()`) is unrelated to the sound cue and still moves the star slightly toward the target -- only the anticipatory-cue shake was changed.
+
 ---
 
 ## Script Registry

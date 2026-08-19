@@ -80,7 +80,7 @@ class SingleCharRenderer(Renderer):
             draw.polygon([(agent.x - r, agent.y + r), (agent.x + r, agent.y + r), (agent.x, agent.y - r)], fill=color)
             draw.polygon([(agent.x, agent.y - r), (agent.x - r, agent.y + r), (agent.x - r * 0.6, agent.y + r * 0.8), (agent.x - r * 0.1, agent.y - r * 0.6)], fill=hl)
         elif agent.shape == Shape.STAR:
-            self.draw_star(draw, agent.x, agent.y, r * 1.5 if agent.name == "authority" else r, color)
+            self.draw_star(draw, agent.x, agent.y, r * 1.5 if agent.name == "authority" else r, color, rotation=getattr(agent, 'shake_rotation', 0.0))
 
         face_y = agent.y + (12 if agent.shape == Shape.TRIANGLE else 0)
         f_scale = 0.75 if agent.shape == Shape.STAR else 1.0
@@ -112,11 +112,16 @@ def setup_scene(scene_name, scene_x, props):
 PRE_SHAKE_PAUSE = 0.3     # "very shortly after the outcome"
 SHAKE_DURATION = 0.48     # "briefly shakes" (12 frames @ 25fps)
 ANTICIPATORY_PAUSE = 2.5  # main anticipatory-looking window (2-2.5s range, upper bound)
+SHAKE_ROTATION_AMPLITUDE = 0.14  # radians (~8deg); the star's points rock back
+                                  # and forth in place -- x/y never change, per
+                                  # David's feedback that the star shouldn't
+                                  # shift position while it shakes.
 
 
 def anticipatory_cue(anim, authority):
     """Star stays put at its home/centered position (CENTER_X, 60): goes
-    angry, briefly shakes (sound cue fires at shake onset), then holds
+    angry, briefly shakes IN PLACE (a rotational wobble only -- x/y position
+    never changes) with the sound cue firing at shake onset, then holds
     still -- angry and centered -- for ANTICIPATORY_PAUSE seconds. Returns
     the frame index at which the shake (and sound cue) begins, so the
     caller can compute the matching ms offset for the JS audio trigger.
@@ -124,12 +129,11 @@ def anticipatory_cue(anim, authority):
     anim.pause(PRE_SHAKE_PAUSE)
     sound_cue_frame = len(anim.frames)
     authority.expression = Expression.ANGRY
-    start_gx = authority.x
     shake_frames = int(SHAKE_DURATION * FPS)
     for i in range(shake_frames):
-        authority.x = start_gx + 4 * math.sin(i * 1.8)
+        authority.shake_rotation = SHAKE_ROTATION_AMPLITUDE * math.sin(i * 1.8)
         anim.snap()
-    authority.x = start_gx
+    authority.shake_rotation = 0.0
     anim.pause(ANTICIPATORY_PAUSE)
     return sound_cue_frame
 

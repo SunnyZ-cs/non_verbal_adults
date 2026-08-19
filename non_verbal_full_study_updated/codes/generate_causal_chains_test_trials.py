@@ -134,7 +134,7 @@ def eyes_only_draw_agent(self, draw, agent):
         draw.polygon([(agent.x - r, agent.y + r), (agent.x + r, agent.y + r), (agent.x, agent.y - r)], fill=color)
         draw.polygon([(agent.x, agent.y - r), (agent.x - r, agent.y + r), (agent.x - r * 0.6, agent.y + r * 0.8), (agent.x - r * 0.1, agent.y - r * 0.6)], fill=hl)
     elif agent.shape == Shape.STAR:
-        self.draw_star(draw, agent.x, agent.y, r * 1.5 if agent.name == "authority" else r, color)
+        self.draw_star(draw, agent.x, agent.y, r * 1.5 if agent.name == "authority" else r, color, rotation=getattr(agent, 'shake_rotation', 0.0))
 
     face_y = agent.y + (12 if agent.shape == Shape.TRIANGLE else 0)
     f_scale = 0.75 if agent.shape == Shape.STAR else 1.0
@@ -146,6 +146,18 @@ def eyes_only_draw_agent(self, draw, agent):
 
 Renderer.draw_face = eyes_only_draw_face
 Renderer.draw_agent = eyes_only_draw_agent
+
+
+def dither(frames):
+    """Toggle one corner pixel between two near-white values every other
+    frame so Pillow's GIF encoder can never treat two frames as byte-
+    identical and collapse them -- see the comment at its call site."""
+    out = []
+    for i, f in enumerate(frames):
+        f = f.copy()
+        f.putpixel((0, 0), (255, 255, 255) if i % 2 == 0 else (254, 254, 254))
+        out.append(f)
+    return out
 
 
 # ==========================================
@@ -163,6 +175,8 @@ Renderer.draw_agent = eyes_only_draw_agent
 POST_BREAK_PAUSE = 0.15   # let the shards visibly settle, no longer than that
 PRE_SHAKE_PAUSE = 0.3     # "almost immediately after the block breaks"
 SHAKE_DURATION = 0.48     # "briefly shakes" (12 frames @ 25fps)
+SHAKE_ROTATION_AMPLITUDE = 0.14  # radians (~8deg); matches warmup_single_character_trials.py
+                                  # exactly -- the star's points rock in place, x/y never change.
 # cross-context timing-parity pad so chains' part1 length exactly matches
 # single_cause's part1 length (single_cause's bystander hop adds time that
 # chains doesn't otherwise have) -- tuned empirically, see build script output.
@@ -259,22 +273,23 @@ class TestTrialsExperiment:
         self.anim.pause(POST_BREAK_PAUSE)
 
     def anticipatory_cue(self):
-        """Star stays centered: goes angry, briefly shakes (sound cue fires
-        at shake onset), then holds still -- angry and centered -- which is
-        exactly where part1 ends (the anticipatory-freeze PNG is the last
-        frame of this). Both characters are untouched here (still matched,
-        neither has moved or lost its star), and the star gives no
-        directional cue. Records self.sound_frame for the JS audio trigger.
+        """Star stays centered: goes angry, briefly shakes IN PLACE (a
+        rotational wobble only -- x/y position never changes) with the
+        sound cue firing at shake onset, then holds still -- angry and
+        centered -- which is exactly where part1 ends (the anticipatory-
+        freeze PNG is the last frame of this). Both characters are
+        untouched here (still matched, neither has moved or lost its
+        star), and the star gives no directional cue. Records
+        self.sound_frame for the JS audio trigger.
         """
         self.anim.pause(PRE_SHAKE_PAUSE)
         self.sound_frame = len(self.anim.frames)
         self.authority.expression = Expression.ANGRY
-        start_gx = self.authority.x
         shake_frames = int(SHAKE_DURATION * FPS)
         for i in range(shake_frames):
-            self.authority.x = start_gx + 4 * math.sin(i * 1.8)
+            self.authority.shake_rotation = SHAKE_ROTATION_AMPLITUDE * math.sin(i * 1.8)
             self.anim.snap()
-        self.authority.x = start_gx
+        self.authority.shake_rotation = 0.0
         self.split_frame = len(self.anim.frames)
 
     def reveal_and_punish(self, target_agent):
@@ -327,6 +342,15 @@ class TestTrialsExperiment:
 
         # After the cue, punish the designated agent (part2).
         self.reveal_and_punish(target_agent)
+
+        # Pillow can silently collapse consecutive near-identical frames when
+        # saving a GIF (corrupting apparent motion, e.g. eating frames of the
+        # brief shake). dither() forces every frame to be byte-distinct so
+        # none get merged -- same fix already used in
+        # warmup_single_character_trials.py. Applied once here so it
+        # propagates through every save below AND through the combo/reverse
+        # generation in __main__ (which reuses self.anim.frames).
+        self.anim.frames = dither(self.anim.frames)
 
         # Finalize and Output
         print(f"Exporting {filename}...")

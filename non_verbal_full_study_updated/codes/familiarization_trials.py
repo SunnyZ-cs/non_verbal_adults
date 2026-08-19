@@ -69,6 +69,7 @@ class Agent:
         self.visible = True
         self.arm_target_l: Optional[Tuple[float, float]] = None
         self.arm_target_r: Optional[Tuple[float, float]] = None
+        self.shake_rotation = 0.0  # radians; used for the star authority's in-place "shake" (no x/y translation)
 
 class Prop:
     def __init__(self, obj_type: str, x: float, y: float, visible: bool = False):
@@ -112,12 +113,15 @@ class Renderer:
         rgb = hex_to_rgb(color_hex)
         return '#%02x%02x%02x' % tuple(min(255, int(c + (255 - c) * 0.45)) for c in rgb)
 
-    def draw_star(self, draw, x, y, r=25, color="#fcc419"):
+    def draw_star(self, draw, x, y, r=25, color="#fcc419", rotation=0.0):
+        # rotation (radians) spins the star's points in place around (x, y)
+        # -- used for the authority's "shake" so it can convey agitation
+        # without ever translating its x/y position.
         pts = []
         hl_pts = []
         for i in range(10):
             curr_r = r if i % 2 == 0 else r * 0.4
-            a = i * (math.pi / 5) - (math.pi / 2)
+            a = i * (math.pi / 5) - (math.pi / 2) + rotation
             pts.append((x + curr_r * math.cos(a), y + curr_r * math.sin(a)))
             if i <= 4: # Top left edges for highlight
                 hl_pts.append((x - r*0.1 + curr_r * 0.7 * math.cos(a), y - r*0.1 + curr_r * 0.7 * math.sin(a)))
@@ -171,7 +175,7 @@ class Renderer:
             # Add glossy highlight curve
             draw.polygon([(agent.x, agent.y-r), (agent.x-r, agent.y+r), (agent.x-r*0.6, agent.y+r*0.8), (agent.x-r*0.1, agent.y-r*0.6)], fill=hl)
         elif agent.shape == Shape.STAR:
-            self.draw_star(draw, agent.x, agent.y, r * 1.5 if agent.name == "authority" else r, color)
+            self.draw_star(draw, agent.x, agent.y, r * 1.5 if agent.name == "authority" else r, color, rotation=getattr(agent, 'shake_rotation', 0.0))
 
         
         face_y = agent.y + (12 if agent.shape == Shape.TRIANGLE else 0)
