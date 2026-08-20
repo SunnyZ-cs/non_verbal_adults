@@ -144,7 +144,10 @@ function testFiles(cond) {
 // Phase durations (ms). part1/part2 match the exact GIF split points
 // (both context generators produce identical split/sound frame counts:
 // see chains_timing.json / single_cause_timing.json in materials/).
-const part1_duration  = 5400;    // causal event x1, angry+shake+sound, settles centered
+const part1_duration  = 5440;    // causal event x1, angry+shake+sound, settles centered
+                                  // (+1 frame vs. earlier build: the shake now snaps one
+                                  // extra "settled" frame at the end so it visibly finishes
+                                  // and returns to neutral instead of ending mid-tilt)
 const test_sound_offset_ms = 4920;      // offset into part1 at which the shake+sound cue begins
 const antic_duration  = 2500;           // ANTICIPATORY FREEZE (David: "2-2.5 s pause"): static
                                          // angry star, dead-centered, no directional cue

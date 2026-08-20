@@ -1,14 +1,14 @@
 {
   "distal": {
-    "split_frame": 135,
+    "split_frame": 136,
     "sound_frame": 123,
-    "part1_ms": 5400,
+    "part1_ms": 5440,
     "sound_ms": 4920
   },
   "proximal": {
-    "split_frame": 135,
+    "split_frame": 136,
     "sound_frame": 123,
-    "part1_ms": 5400,
+    "part1_ms": 5440,
     "sound_ms": 4920
   }
 }

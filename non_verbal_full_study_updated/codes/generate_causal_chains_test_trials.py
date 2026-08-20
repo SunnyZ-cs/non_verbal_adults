@@ -290,6 +290,12 @@ class TestTrialsExperiment:
             self.authority.shake_rotation = SHAKE_ROTATION_AMPLITUDE * math.sin(i * 1.8)
             self.anim.snap()
         self.authority.shake_rotation = 0.0
+        # Settle: snap ONE more frame at rotation=0 so the shake visibly
+        # finishes and returns to neutral before part1 ends -- without this,
+        # the last stored frame (and thus the anticipatory-freeze PNG held
+        # for 2.5s by the JS) still shows the star mid-tilt from the final
+        # oscillation step, which reads as the shake getting cut off early.
+        self.anim.snap()
         self.split_frame = len(self.anim.frames)
 
     def reveal_and_punish(self, target_agent):
@@ -393,10 +399,12 @@ if __name__ == "__main__":
     import os
     import json
 
-    # E = Teal Triangle, F = Red Square, G = Brown Circle, H = Blue Square
+    # E = Teal Triangle, F = Red Square, G = Brown Triangle, H = Blue Square
+    # (G was a circle; changed to a triangle since the warmup uses a pink
+    # circle and we don't want any circles -- or pink -- reused in test.)
     E = {"shape": Shape.TRIANGLE, "color": Color.TEAL}
     F = {"shape": Shape.SQUARE, "color": Color.RED}
-    G = {"shape": Shape.CIRCLE, "color": Color.BROWN}
+    G = {"shape": Shape.TRIANGLE, "color": Color.BROWN}
     H = {"shape": Shape.SQUARE, "color": Color.BLUE}
 
     # ==========================
