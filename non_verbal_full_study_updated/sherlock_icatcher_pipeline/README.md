@@ -244,12 +244,15 @@ to update.
 Per David: for both warmup and test, the punishment sequence now reads as
 bad outcome -> almost immediately, the star (angry face + brief shake +
 non-directional sound cue), still fully centered -> star settles, staying
-angry and centered -> 2-2.5s anticipatory pause (the anticipatory-looking
-window; both characters still matched, nothing indicates direction) -> star
-moves over and takes the target's star. The causal event is now shown ONCE
-(not ×3), so a repeated-viewing scan pattern can't carry into the
-anticipatory window. In single_cause, the distal/bystander character makes a
-small, clearly irrelevant hop-in-place before the proximal character acts.
+angry and centered -> anticipatory pause (the anticipatory-looking window;
+both characters still matched, nothing indicates direction) -> star moves
+over and takes the target's star. The pause is **2.5s for warmup** (baked
+directly into the warmup GIF) and **3.0s for test trials** (a JS-side static
+freeze, held between part1 and part2 -- see the table below). The causal
+event is now shown ONCE (not ×3), so a repeated-viewing scan pattern can't
+carry into the anticipatory window. In single_cause, the distal/bystander
+character makes a small, clearly irrelevant hop-in-place before the
+proximal character acts.
 
 Test-trial recording timeline (one webcam segment per test trial):
 

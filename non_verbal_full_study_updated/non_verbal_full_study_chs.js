@@ -35,8 +35,28 @@
 //
 //  Warmup trial timeline (single continuous GIF, ~16.7-17.1 s):
 //    neutral scene -> bad action -> almost-immediate angry+shake+sound
-//    (centered) -> static angry hold (2.5 s) -> authority approaches +
+//    (centered) -> static angry hold (3.0 s) -> authority approaches +
 //    removes star -> final freeze (held via loop=1 last-frame hold).
+//
+//  (5) LOAD-TIMING FIX: every GIF (warmup punish clips, test part1) is now
+//      preloaded well ahead of when it's actually shown (warmups + test
+//      phase 1's part1 at script start, during consent/intro/practice;
+//      test phase 2's part1 during test phase 1's ~20s run), using a
+//      SESSION-WIDE cache-busting value (session_cb) so the preload URL
+//      and the playback URL match exactly and the browser can serve the
+//      warmed copy instantly. On top of that, the sound-cue and phase-swap
+//      timers for both warmup and test no longer start counting from the
+//      moment the trial's DOM is inserted -- they're anchored to the
+//      visible <img>'s actual 'load' event (or fire immediately if it's
+//      already loaded). Previously, timers ran on a fixed schedule
+//      regardless of how long the GIF actually took to fetch/decode, so
+//      under any real network/CPU latency the sound could fire before the
+//      shake was visible, and the fixed-duration display window could run
+//      out before the shake had even started rendering -- both bugs got
+//      worse over a session as browser load accumulated (webcam
+//      recording, prior images, etc.), matching the reported "1st warmup
+//      in sync, 2nd early, 3rd very early; test 1 partial wiggle, test 2
+//      none" pattern.
 //
 //  Paste the contents of this file directly into the
 //  "jsPsych Experiment Code" editor on childrenhelpingscience.com.
@@ -126,6 +146,53 @@ function playCue() {
     }
 }
 
+// ── Load-timing helpers ──────────────────────────────────────────────
+// One cache-busting value for the WHOLE session (not one per trial). This
+// still forces a fresh fetch from GitHub once per session (avoiding a
+// stale CDN-cached older build), but critically it means a URL we preload
+// ahead of time and the URL actually used at playback time are byte-for-
+// byte identical, so the browser can serve the already-downloaded copy
+// from cache instantly instead of re-fetching from the network.
+const session_cb = Date.now();
+function withCb(url) { return url + '?cb=' + session_cb; }
+
+// Fire-and-forget background download into the browser's HTTP cache. Uses
+// fetch() (not `new Image()`) so nothing gets decoded/rendered/animated in
+// the background -- it only warms the cache so the real, visible <img>
+// element can load near-instantly when its trial actually starts.
+function preloadUrl(url) {
+    fetch(url).catch(err => console.warn('Preload failed:', url, err));
+}
+
+// Run `fn` once `imgEl` has actually finished loading (i.e. the browser is
+// really about to start animating it), or immediately if it's already
+// loaded (e.g. served from a warm cache) -- this is what the sound-cue and
+// phase-swap timers are anchored to, INSTEAD OF the moment the trial's DOM
+// was inserted. Without this, a slow/cold image fetch could delay the
+// visible start of a GIF's animation while the timers (previously started
+// at DOM-insertion time) kept counting down regardless, making the sound
+// cue and phase swaps land early relative to what the viewer actually sees
+// -- exactly the "sound arrives before the wiggle" / "wiggle looks cut
+// off" symptom this fixes.
+function onImageReady(imgEl, fn) {
+    if (imgEl && imgEl.complete && imgEl.naturalWidth !== 0) {
+        fn();
+    } else if (imgEl) {
+        imgEl.addEventListener('load', fn, { once: true });
+        imgEl.addEventListener('error', fn, { once: true }); // don't hang forever if it fails
+    } else {
+        fn();
+    }
+}
+
+function warmupUrl(position) { return withCb(BASE + `warmup_punish_${position}.gif`); }
+
+// Kick off downloads for all 3 warmup GIFs as early as possible -- right
+// now, before consent/intro/practice videos even play. That gives each one
+// tens of seconds of lead time to finish downloading in the background,
+// well before the warmup phase actually starts.
+warmup_positions.forEach(pos => preloadUrl(warmupUrl(pos)));
+
 // ── Context / direction / order randomization (unchanged) ──
 const context = Math.random() < 0.5 ? 'chains' : 'single_cause';
 const direction = Math.random() < 0.5 ? 'forward' : 'backward';
@@ -164,6 +231,11 @@ const test_order = Math.random() < 0.5 ?
     [{name: 'proximal', files: testFiles('proximal')}, {name: 'distal',  files: testFiles('distal')}];
 
 const assigned_combo = `${context}_` + (is_forward ? '' : 'reverse_') + `${test_order[0].name}_test_final.gif`;
+
+// Kick off the first test trial's part1.gif download early too, same
+// reasoning as the warmup preloads above -- it has the entire consent +
+// intro + practice + warmup phase as lead time before it's actually shown.
+preloadUrl(withCb(test_order[0].files.part1));
 
 // ════════════════════════════════════════════════════════════════════
 //  INIT jsPsych
@@ -268,14 +340,19 @@ function buildWarmupPunishTrial(position, index) {
     return {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: function() {
-            const cb = Date.now();
-            return `<img src="${BASE}warmup_punish_${position}.gif?cb=${cb}" class="trial-visual">`;
+            return `<img id="warmup-visual-${index}" src="${warmupUrl(position)}" class="trial-visual">`;
         },
         choices: "NO_KEYS",
         trial_duration: warmup_durations[position],
         post_trial_gap: 0,
         on_load: function() {
-            setTimeout(playCue, warmup_sound_offset_ms[position]);
+            const el = document.getElementById(`warmup-visual-${index}`);
+            // Anchor the sound-cue timer to when the GIF is ACTUALLY ready
+            // to animate (usually instant, since it was preloaded well in
+            // advance), not to when this trial's DOM was inserted.
+            onImageReady(el, function() {
+                setTimeout(playCue, warmup_sound_offset_ms[position]);
+            });
         },
         data: { trial_type: 'warmup_punish', warmup_position: position, warmup_index: index }
     };
@@ -318,10 +395,14 @@ function bullseyeTrial(tag) {
 // One <img> element; src swaps at exact phase boundaries. All phases are
 // inside a single webcam recording segment (recording spans the whole
 // timeline built in buildTestTimeline).
-function buildTestTimeline(testObj) {
+//
+// `nextPart1Url`: if given, its download is kicked off in the background
+// once THIS trial's part1 is showing -- it then has this whole trial's
+// ~20+ second duration as lead time before the NEXT test trial actually
+// needs it, instead of starting cold at that trial's DOM insertion.
+function buildTestTimeline(testObj, nextPart1Url) {
     const trials = [];
     const f = testObj.files;
-    let trial_cb = null;
 
     // 0. Start webcam recording FIRST.
     trials.push(start_recording);
@@ -334,33 +415,43 @@ function buildTestTimeline(testObj) {
     trials.push({
         type: jsPsychHtmlKeyboardResponse,
         stimulus: function() {
-            trial_cb = Date.now();
-            return `<img id="test-visual" src="${f.part1}?cb=${trial_cb}" class="trial-visual">`;
+            return `<img id="test-visual" src="${withCb(f.part1)}" class="trial-visual">`;
         },
         choices: "NO_KEYS",
         trial_duration: part1_duration + antic_duration + part2_duration + freeze_duration,
         on_load: function() {
-            const cb = trial_cb || Date.now();
-            const antic_url = f.antic + '?cb=' + cb;
-            const part2_url = f.part2 + '?cb=' + cb;
-            const freeze_url = f.freeze + '?cb=' + cb;
+            const antic_url = withCb(f.antic);
+            const part2_url = withCb(f.part2);
+            const freeze_url = withCb(f.freeze);
 
-            // Preload static PNGs using new Image()
-            [antic_url, freeze_url].forEach(src => { const im = new Image(); im.src = src; });
-
-            // Preload GIF using fetch to avoid auto-play in background
-            fetch(part2_url).catch(err => console.warn('Preload part2 failed:', err));
+            // Background-preload this trial's own later-phase assets --
+            // plenty of lead time (part1_duration ms at minimum) before
+            // any of them are actually needed.
+            preloadUrl(antic_url);
+            preloadUrl(part2_url);
+            preloadUrl(freeze_url);
+            if (nextPart1Url) preloadUrl(nextPart1Url);
 
             const el = document.getElementById('test-visual');
-            // Non-directional sound cue, fires when the star's brief angry
-            // shake begins (still inside part1, well before the split).
-            setTimeout(playCue, test_sound_offset_ms);
-            // ANTICIPATORY FREEZE: angry star at center, target not yet knowable
-            setTimeout(function() { if (el) el.src = antic_url; }, part1_duration);
-            // Reveal: authority flies to its target and removes the star
-            setTimeout(function() { if (el) el.src = part2_url; }, part1_duration + antic_duration);
-            // Outcome freeze: post-punishment looking time
-            setTimeout(function() { if (el) el.src = freeze_url; }, part1_duration + antic_duration + part2_duration);
+            // Anchor every timer to when part1 is ACTUALLY ready to
+            // animate (usually instant, since it was preloaded well in
+            // advance), not to when this trial's DOM was inserted --
+            // otherwise a slow/cold fetch eats into the fixed time budget
+            // below and can visibly cut the shake short or skip it, while
+            // the sound cue (which doesn't care about visible content)
+            // still fires on the original schedule and ends up sounding
+            // early relative to what's on screen.
+            onImageReady(el, function() {
+                // Non-directional sound cue, fires when the star's brief
+                // angry shake begins (still inside part1, well before the split).
+                setTimeout(playCue, test_sound_offset_ms);
+                // ANTICIPATORY FREEZE: angry star at center, target not yet knowable
+                setTimeout(function() { if (el) el.src = antic_url; }, part1_duration);
+                // Reveal: authority flies to its target and removes the star
+                setTimeout(function() { if (el) el.src = part2_url; }, part1_duration + antic_duration);
+                // Outcome freeze: post-punishment looking time
+                setTimeout(function() { if (el) el.src = freeze_url; }, part1_duration + antic_duration + part2_duration);
+            });
         },
         data: {
             trial_type: testObj.name + '_full_test',
@@ -473,11 +564,11 @@ jsPsych.run([
     bullseyeTrial('warmup_2'),
     buildWarmupPunishTrial(warmup_positions[2], 2),
 
-    // ── Test Phase 1 ──
-    ...buildTestTimeline(test_order[0]),
+    // ── Test Phase 1 (preloads test phase 2's part1.gif in the background) ──
+    ...buildTestTimeline(test_order[0], withCb(test_order[1].files.part1)),
 
     // ── Test Phase 2 ──
-    ...buildTestTimeline(test_order[1]),
+    ...buildTestTimeline(test_order[1], null),
 
     // ── Outro Sequence ──
     outro_video,

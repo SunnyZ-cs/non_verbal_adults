@@ -6,12 +6,13 @@ GPU/Sherlock-array-friendly version of process_icatcher.py.
 REVISED-DESIGN TIMING (post SECOND lab meeting, per David's anticipation-cue
 redesign: causal event now shown once instead of x3, and the star's
 angry+shake+sound cue happens almost immediately after the bad outcome,
-still fully centered, before the 2-2.5s anticipatory pause):
+still fully centered, before the anticipatory pause -- 2.5s for warmup
+(baked into the warmup GIF), 3.0s for test trials (JS-side static freeze)):
   bullseye 3.0 | part1 5.44 | ANTICIPATORY FREEZE 3.0 | part2 2.88 | outcome freeze 8.0
   -> outcome freeze starts 14.32 s into the recording (the ffmpeg crop point below;
      unaffected by the freeze-duration change, since it only depends on
      bullseye + part1 + anticipatory freeze + part2).
-  -> anticipatory window = 8.4-10.9 s of the recording; analyze it from the
+  -> anticipatory window = 8.44-11.44 s of the recording; analyze it from the
      full-video pass (process_icatcher_full.py + run_icatcher_full_array.sbatch).
   -> sound cue fires 4.92 s into part1 (i.e. 7.92 s into the recording), well
      before the anticipatory window itself.
