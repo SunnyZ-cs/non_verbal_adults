@@ -384,10 +384,10 @@ class TestTrialsExperiment:
         antic_filename = filename.replace('_final.gif', '_anticipatory_freeze.png')
 
         print(f"Exporting {part1_filename}... ({len(part1_frames)} frames, sound cue at frame {self.sound_frame})")
-        part1_frames[0].save(part1_filename, save_all=True, append_images=part1_frames[1:], duration=durations[:sf], loop=0, optimize=False)
+        part1_frames[0].save(part1_filename, save_all=True, append_images=part1_frames[1:], duration=durations[:sf], loop=1, optimize=False)
 
         print(f"Exporting {part2_filename}... ({len(part2_frames)} frames)")
-        part2_frames[0].save(part2_filename, save_all=True, append_images=part2_frames[1:], duration=durations[sf:], loop=0, optimize=False)
+        part2_frames[0].save(part2_filename, save_all=True, append_images=part2_frames[1:], duration=durations[sf:], loop=1, optimize=False)
 
         print(f"Exporting {antic_filename}...")
         antic_freeze.save(antic_filename)
@@ -491,9 +491,9 @@ if __name__ == "__main__":
     reverse_distal_antic = distal_exp.anim.frames[sf_d - 1].transpose(Image.FLIP_LEFT_RIGHT)
 
     print("Exporting reverse_distal_test_part1.gif...")
-    reverse_distal_part1[0].save("reverse_distal_test_part1.gif", save_all=True, append_images=reverse_distal_part1[1:], duration=d_distal[:sf_d], loop=0, optimize=False)
+    reverse_distal_part1[0].save("reverse_distal_test_part1.gif", save_all=True, append_images=reverse_distal_part1[1:], duration=d_distal[:sf_d], loop=1, optimize=False)
     print("Exporting reverse_distal_test_part2.gif...")
-    reverse_distal_part2[0].save("reverse_distal_test_part2.gif", save_all=True, append_images=reverse_distal_part2[1:], duration=d_distal[sf_d:], loop=0, optimize=False)
+    reverse_distal_part2[0].save("reverse_distal_test_part2.gif", save_all=True, append_images=reverse_distal_part2[1:], duration=d_distal[sf_d:], loop=1, optimize=False)
     print("Exporting reverse_distal_test_anticipatory_freeze.png...")
     reverse_distal_antic.save("reverse_distal_test_anticipatory_freeze.png")
 
@@ -510,9 +510,9 @@ if __name__ == "__main__":
     reverse_proximal_antic = proximal_exp.anim.frames[sf_p - 1].transpose(Image.FLIP_LEFT_RIGHT)
 
     print("Exporting reverse_proximal_test_part1.gif...")
-    reverse_proximal_part1[0].save("reverse_proximal_test_part1.gif", save_all=True, append_images=reverse_proximal_part1[1:], duration=d_proximal[:sf_p], loop=0, optimize=False)
+    reverse_proximal_part1[0].save("reverse_proximal_test_part1.gif", save_all=True, append_images=reverse_proximal_part1[1:], duration=d_proximal[:sf_p], loop=1, optimize=False)
     print("Exporting reverse_proximal_test_part2.gif...")
-    reverse_proximal_part2[0].save("reverse_proximal_test_part2.gif", save_all=True, append_images=reverse_proximal_part2[1:], duration=d_proximal[sf_p:], loop=0, optimize=False)
+    reverse_proximal_part2[0].save("reverse_proximal_test_part2.gif", save_all=True, append_images=reverse_proximal_part2[1:], duration=d_proximal[sf_p:], loop=1, optimize=False)
     print("Exporting reverse_proximal_test_anticipatory_freeze.png...")
     reverse_proximal_antic.save("reverse_proximal_test_anticipatory_freeze.png")
 

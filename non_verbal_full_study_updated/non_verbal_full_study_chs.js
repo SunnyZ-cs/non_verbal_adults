@@ -149,7 +149,7 @@ const part1_duration  = 5440;    // causal event x1, angry+shake+sound, settles 
                                   // extra "settled" frame at the end so it visibly finishes
                                   // and returns to neutral instead of ending mid-tilt)
 const test_sound_offset_ms = 4920;      // offset into part1 at which the shake+sound cue begins
-const antic_duration  = 2500;           // ANTICIPATORY FREEZE (David: "2-2.5 s pause"): static
+const antic_duration  = 3000;           // ANTICIPATORY FREEZE (David: "3 seconds"): static
                                          // angry star, dead-centered, no directional cue
 const part2_duration  = 2880;    // authority approaches target + removes star
 const freeze_duration = 8000;           // outcome freeze (post-punishment looking) -- shortened from

@@ -8,6 +8,8 @@ All animations use the bubbly/glossy 3D visual style (with sphere highlights, gr
 
 **No circles or pink in test trials:** since the warmup's single character is a pink circle, none of the test-trial agents use `Shape.CIRCLE` or `Color.PINK` -- agent `G` (previously a Brown Circle) is now a Brown Triangle in both `generate_causal_chains_test_trials.py` and `generate_single_cause_test_trials.py`.
 
+**`part1.gif`/`part2.gif` now use `loop=1`, not `loop=0`:** with `loop=0` (infinite loop), if the JS's `<img src>` swap from `part1.gif` to the anticipatory-freeze PNG happened even slightly late, the GIF would already have restarted from frame 0 (the neutral pre-outcome scene) -- so the shake could appear to not play at all, or the star could look like it jumped straight to angry, depending on exactly how late the swap landed. `loop=1` makes the GIF play once and then hold on its last frame (same behavior already relied on in `warmup_single_character_trials.py`), and that last frame is pixel-identical to the anticipatory-freeze PNG it gets swapped to, so there's no visible discontinuity no matter how the timing lands. Also applies to `part2.gif` (belt-and-suspenders; it already had a 10s hold on its own last frame, so it wasn't actually at risk, but there's no downside to matching `part1.gif`'s setting).
+
 ---
 
 ## Script Registry
