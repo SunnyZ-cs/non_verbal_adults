@@ -58,6 +58,18 @@
 //      in sync, 2nd early, 3rd very early; test 1 partial wiggle, test 2
 //      none" pattern.
 //
+//  (6) AUDIO COLD-START FIX (per David, next round: "in the first warmup,
+//      the shaking starts before the sound; 2nd/3rd are in sync"): a
+//      browser's very first real audio playback in a page session has
+//      extra one-time decode/output-pipeline latency, independent of file
+//      download time -- so whichever cue plays first in the whole session
+//      (always warmup trial 1) visibly lagged behind its shake, while
+//      later cues (pipeline already warm) were instant. Fixed by reusing
+//      one persistent, preloaded Audio element for every cue instead of
+//      constructing a new one per call, and "priming" it with a real
+//      muted play+pause on the study's first user gesture (the Start
+//      button), which happens minutes before warmup 1 actually needs it.
+//
 //  Paste the contents of this file directly into the
 //  "jsPsych Experiment Code" editor on childrenhelpingscience.com.
 // ════════════════════════════════════════════════════════════════════
@@ -135,12 +147,45 @@ const warmup_sound_offset_ms = {
 const warmup_gap = 1000;              // blank between warmups
 
 // ── Non-directional sound cue (plays at shake onset, both warmup + test) ──
+// (6) AUDIO COLD-START FIX (per David: "in the first warmup, the shaking
+//     starts before the sound; in the 2nd/3rd they're in sync"): the OLD
+//     playCue() created a brand-new `Audio` object from scratch on every
+//     call. A browser's very first real audio decode/playback in a page
+//     session carries extra one-time latency (codec/output-pipeline init)
+//     regardless of how early the file itself was fetched -- so the FIRST
+//     ever cue (always warmup trial 1, since it's the first sound played
+//     all session) lagged visibly behind the shake, while the 2nd/3rd cues
+//     (pipeline already warm) fired instantly and looked in sync. Fix: use
+//     ONE persistent, preloaded Audio element for every cue for the rest of
+//     the session (cheaper and more consistent than re-instantiating), and
+//     "prime" it with a real muted play+pause on the study's first genuine
+//     user gesture (the Start button below) -- that happens minutes before
+//     warmup 1, giving the decode pipeline plenty of time to fully warm up.
 const SOUND_URL = BASE + 'punish_cue.mp3';
+const cueAudio = new Audio(SOUND_URL);
+cueAudio.preload = 'auto';
+cueAudio.load();
+let cueAudioPrimed = false;
+function primeCueAudio() {
+    if (cueAudioPrimed) return;
+    cueAudioPrimed = true;
+    const prevVolume = cueAudio.volume;
+    cueAudio.volume = 0;
+    cueAudio.play().then(() => {
+        cueAudio.pause();
+        cueAudio.currentTime = 0;
+        cueAudio.volume = prevVolume;
+    }).catch(() => {
+        // If priming itself fails (e.g. gesture not recognized), just
+        // restore volume -- playCue() will still try to play for real later.
+        cueAudio.volume = prevVolume;
+    });
+}
 function playCue() {
     try {
-        const a = new Audio(SOUND_URL);
-        a.volume = 1.0;
-        a.play().catch(err => console.warn('Sound cue playback failed:', err));
+        cueAudio.currentTime = 0;
+        cueAudio.volume = 1.0;
+        cueAudio.play().catch(err => console.warn('Sound cue playback failed:', err));
     } catch (err) {
         console.warn('Sound cue error:', err);
     }
@@ -277,6 +322,14 @@ const instructions = {
             <p><strong>For parents:</strong> Please help keep your child's attention on the screen.</p>
         </div>`,
     choices: ['Start ▶'],
+    on_load: function() {
+        // First real user gesture in the study -- use it to prime the sound
+        // cue's audio pipeline (see cueAudio/primeCueAudio above) well ahead
+        // of warmup trial 1, the first trial that actually needs to play it.
+        const group = document.getElementById('jspsych-html-button-response-btngroup');
+        const btn = group && group.querySelector('button');
+        if (btn) btn.addEventListener('click', primeCueAudio, { once: true });
+    },
     data: { trial_type: 'instructions' }
 };
 
